@@ -6,10 +6,21 @@ import {
   type CSSProperties,
 } from "react";
 import { GAME_CONFIG } from "./game/config";
+import {
+  advanceCooperativeGame,
+  createCooperativeGame,
+  isFishInsideCooperativeZone,
+} from "./game/cooperativeEngine";
 import { advanceLane, createLane } from "./game/engine";
-import type { LaneState, PlayerDefinition } from "./game/types";
+import type {
+  CooperativePlayerDefinition,
+  CooperativeState,
+  LaneState,
+  PlayerDefinition,
+} from "./game/types";
 
 type Screen = "home" | "setup" | "game";
+type GameMode = "rivals" | "cooperative";
 
 const PLAYER_COLORS = ["#ffcf70", "#67d5c3", "#ff8f8f", "#b6a1ff"];
 const BLOCKED_BINDINGS = new Set([
@@ -141,18 +152,154 @@ function FishingLane({ lane }: { lane: LaneState }) {
   );
 }
 
+function CooperativeBoard({ game }: { game: CooperativeState }) {
+  const overlap = isFishInsideCooperativeZone(game);
+  const catchPercent = Math.round(game.catchProgress * 100);
+  const escapeWarning = game.catchProgress <= 0.25;
+  const zone = GAME_CONFIG.cooperative.zone;
+  const boardStyle = {
+    "--fish-color": game.fish.color,
+  } as CSSProperties;
+
+  return (
+    <section className="cooperative-layout" style={boardStyle}>
+      <aside className="cooperative-sidebar">
+        <p className="eyebrow">Two anglers · one catch</p>
+        <h2>Coordinate the zone.</h2>
+        <div className="cooperative-controls">
+          {game.players.map((player) => (
+            <div
+              className="axis-control"
+              key={player.axis}
+              style={
+                {
+                  "--player-color": PLAYER_COLORS[player.id - 1],
+                } as CSSProperties
+              }
+            >
+              <span>{player.axis.toUpperCase()} axis</span>
+              <strong>{player.name}</strong>
+              <kbd>{formatKeyCode(player.keyCode)}</kbd>
+              <small>
+                {player.axis === "x"
+                  ? "Hold right · release left"
+                  : "Hold up · release down"}
+              </small>
+            </div>
+          ))}
+        </div>
+        <div className="cooperative-stats">
+          <div>
+            <span>Team score</span>
+            <strong>{game.score}</strong>
+          </div>
+          <div>
+            <span>Caught</span>
+            <strong>{game.catches}</strong>
+          </div>
+          <div>
+            <span>Streak</span>
+            <strong>{game.streak}</strong>
+          </div>
+          <div>
+            <span>Fish</span>
+            <strong>{game.fish.name}</strong>
+          </div>
+        </div>
+      </aside>
+
+      <div className="cooperative-play">
+        <div className="water-plane">
+          <div className="water-shimmer" />
+          <div
+            className={`cooperative-zone ${
+              overlap ? "is-overlapping" : ""
+            }`}
+            style={{
+              left: `${(game.zoneX - zone.width / 2) * 100}%`,
+              top: `${(game.zoneY - zone.height / 2) * 100}%`,
+              width: `${zone.width * 100}%`,
+              height: `${zone.height * 100}%`,
+            }}
+          >
+            <span className="axis-handle axis-handle-x">X</span>
+            <span className="axis-handle axis-handle-y">Y</span>
+          </div>
+          <div
+            className={`fish-marker cooperative-fish ${
+              overlap ? "is-overlapping" : ""
+            }`}
+            style={{
+              left: `${game.fishX * 100}%`,
+              top: `${game.fishY * 100}%`,
+            }}
+            aria-label={`${game.fish.name}, ${game.fish.difficulty} difficulty`}
+          >
+            <span>{game.fish.symbol}</span>
+          </div>
+
+          {game.phase !== "fishing" && (
+            <div className={`round-result ${game.phase}`}>
+              <strong>
+                {game.phase === "caught"
+                  ? `Team catch! +${game.lastReward}`
+                  : "The fish escaped"}
+              </strong>
+              <span>Next fish incoming</span>
+            </div>
+          )}
+        </div>
+
+        <div
+          className={`progress-block cooperative-progress ${
+            escapeWarning ? "is-warning" : ""
+          }`}
+        >
+          <div className="progress-copy">
+            <span>Shared catch meter</span>
+            <strong>{catchPercent}%</strong>
+          </div>
+          <div
+            className="progress-track"
+            role="progressbar"
+            aria-label="Shared catch meter"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={catchPercent}
+          >
+            <span
+              className="progress-fill"
+              style={{ width: `${game.catchProgress * 100}%` }}
+            />
+          </div>
+          <div className="meter-endpoints" aria-hidden="true">
+            <span>Escape</span>
+            <span>Catch</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function App() {
   const [screen, setScreen] = useState<Screen>("home");
+  const [gameMode, setGameMode] = useState<GameMode>("rivals");
   const [playerCount, setPlayerCount] = useState(2);
   const [bindings, setBindings] = useState<(string | null)[]>([null, null]);
   const [bindingError, setBindingError] = useState("");
   const [lanes, setLanes] = useState<LaneState[]>([]);
+  const [cooperativeGame, setCooperativeGame] =
+    useState<CooperativeState | null>(null);
   const [paused, setPaused] = useState(false);
   const pressedKeys = useRef(new Set<string>());
 
   const nextBinding = bindings.findIndex((binding) => binding === null);
   const canStart = bindings.length === playerCount && nextBinding === -1;
-  const keySignature = lanes.map((lane) => lane.keyCode).join("|");
+  const keySignature =
+    gameMode === "cooperative"
+      ? cooperativeGame?.players.map((player) => player.keyCode).join("|") ?? ""
+      : lanes.map((lane) => lane.keyCode).join("|");
   const leader = useMemo(
     () =>
       lanes.length === 0
@@ -235,21 +382,47 @@ export default function App() {
     const tick = (currentTime: number) => {
       const elapsed = (currentTime - previousTime) / 1000;
       previousTime = currentTime;
-      setLanes((current) =>
-        current.map((lane) =>
-          advanceLane(
-            lane,
-            pressedKeys.current.has(lane.keyCode),
+      if (gameMode === "cooperative") {
+        setCooperativeGame((current) => {
+          if (!current) {
+            return current;
+          }
+          const xPlayer = current.players.find(
+            (player) => player.axis === "x",
+          );
+          const yPlayer = current.players.find(
+            (player) => player.axis === "y",
+          );
+          return advanceCooperativeGame(
+            current,
+            {
+              xPressed: Boolean(
+                xPlayer && pressedKeys.current.has(xPlayer.keyCode),
+              ),
+              yPressed: Boolean(
+                yPlayer && pressedKeys.current.has(yPlayer.keyCode),
+              ),
+            },
             elapsed,
+          );
+        });
+      } else {
+        setLanes((current) =>
+          current.map((lane) =>
+            advanceLane(
+              lane,
+              pressedKeys.current.has(lane.keyCode),
+              elapsed,
+            ),
           ),
-        ),
-      );
+        );
+      }
       animationFrame = requestAnimationFrame(tick);
     };
 
     animationFrame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(animationFrame);
-  }, [paused, screen]);
+  }, [gameMode, paused, screen]);
 
   const selectPlayerCount = (count: number) => {
     setPlayerCount(count);
@@ -257,8 +430,11 @@ export default function App() {
     setBindingError("");
   };
 
-  const beginSetup = () => {
-    setBindings(Array.from({ length: playerCount }, () => null));
+  const beginSetup = (mode: GameMode) => {
+    const setupPlayerCount = mode === "cooperative" ? 2 : playerCount;
+    setGameMode(mode);
+    setPlayerCount(setupPlayerCount);
+    setBindings(Array.from({ length: setupPlayerCount }, () => null));
     setBindingError("");
     setScreen("setup");
   };
@@ -272,15 +448,34 @@ export default function App() {
       name: `Player ${index + 1}`,
       keyCode: keyCode!,
     }));
-    setLanes(players.map((player) => createLane(player)));
+    if (gameMode === "cooperative") {
+      const cooperativePlayers = players.map((player, index) => ({
+        ...player,
+        axis: index === 0 ? "x" : "y",
+      })) as [
+        CooperativePlayerDefinition,
+        CooperativePlayerDefinition,
+      ];
+      setCooperativeGame(createCooperativeGame(cooperativePlayers));
+      setLanes([]);
+    } else {
+      setLanes(players.map((player) => createLane(player)));
+      setCooperativeGame(null);
+    }
     setPaused(false);
     setScreen("game");
   };
 
   const restartGame = () => {
-    setLanes((current) =>
-      current.map((lane) => createLane(playerFromLane(lane))),
-    );
+    if (gameMode === "cooperative") {
+      setCooperativeGame((current) =>
+        current ? createCooperativeGame(current.players) : current,
+      );
+    } else {
+      setLanes((current) =>
+        current.map((lane) => createLane(playerFromLane(lane))),
+      );
+    }
     setPaused(false);
   };
 
@@ -301,17 +496,33 @@ export default function App() {
             <span>Rivals</span>
           </h1>
           <p className="hero-copy">
-            Hold to rise. Release to fall. Stay with the fish and outscore
-            everyone beside you.
+            Face off in independent fishing lanes, or coordinate two axes to
+            land one shared catch.
           </p>
-          <button className="primary-button" onClick={beginSetup}>
-            Set up a game
-            <span aria-hidden="true">→</span>
-          </button>
+          <div className="mode-picker">
+            <button
+              className="mode-card"
+              onClick={() => beginSetup("rivals")}
+            >
+              <span className="mode-number">01</span>
+              <strong>Rivals</strong>
+              <small>1–4 independent lanes</small>
+              <span aria-hidden="true">→</span>
+            </button>
+            <button
+              className="mode-card cooperative-mode-card"
+              onClick={() => beginSetup("cooperative")}
+            >
+              <span className="mode-number">02</span>
+              <strong>Co-op</strong>
+              <small>Two players · one 2D zone</small>
+              <span aria-hidden="true">→</span>
+            </button>
+          </div>
           <div className="feature-row">
             <span>1–4 players</span>
             <span>One keyboard</span>
-            <span>Endless rounds</span>
+            <span>Rivals or co-op</span>
           </div>
         </section>
       </main>
@@ -325,40 +536,53 @@ export default function App() {
           <button className="text-button back-button" onClick={returnHome}>
             ← Back
           </button>
-          <p className="eyebrow">Game setup</p>
-          <h2>Bring everyone to the dock.</h2>
+          <p className="eyebrow">
+            {gameMode === "cooperative" ? "Co-op setup" : "Rivals setup"}
+          </p>
+          <h2>
+            {gameMode === "cooperative"
+              ? "Split the controls. Share the catch."
+              : "Bring everyone to the dock."}
+          </h2>
           <p className="setup-intro">
-            Pick a player count, then have each player press the key they want
-            to hold while fishing.
+            {gameMode === "cooperative"
+              ? "Bind one key for each axis. Both players must coordinate to keep the moving fish inside one shared catch zone."
+              : "Pick a player count, then have each player press the key they want to hold while fishing."}
           </p>
 
-          <div className="setup-section">
-            <div className="section-heading">
-              <span>01</span>
-              <div>
-                <strong>Players</strong>
-                <small>Choose how many lanes to open.</small>
+          {gameMode === "rivals" && (
+            <div className="setup-section">
+              <div className="section-heading">
+                <span>01</span>
+                <div>
+                  <strong>Players</strong>
+                  <small>Choose how many lanes to open.</small>
+                </div>
+              </div>
+              <div className="count-picker">
+                {[1, 2, 3, 4].map((count) => (
+                  <button
+                    key={count}
+                    className={playerCount === count ? "selected" : ""}
+                    onClick={() => selectPlayerCount(count)}
+                  >
+                    {count}
+                  </button>
+                ))}
               </div>
             </div>
-            <div className="count-picker">
-              {[1, 2, 3, 4].map((count) => (
-                <button
-                  key={count}
-                  className={playerCount === count ? "selected" : ""}
-                  onClick={() => selectPlayerCount(count)}
-                >
-                  {count}
-                </button>
-              ))}
-            </div>
-          </div>
+          )}
 
           <div className="setup-section">
             <div className="section-heading">
-              <span>02</span>
+              <span>{gameMode === "cooperative" ? "01" : "02"}</span>
               <div>
                 <strong>Controls</strong>
-                <small>Every player needs a different key.</small>
+                <small>
+                  {gameMode === "cooperative"
+                    ? "One key moves each axis."
+                    : "Every player needs a different key."}
+                </small>
               </div>
             </div>
             <div className="binding-grid">
@@ -382,7 +606,13 @@ export default function App() {
                     } as CSSProperties
                   }
                 >
-                  <span>Player {index + 1}</span>
+                  <span>
+                    {gameMode === "cooperative"
+                      ? `Player ${index + 1} · ${
+                          index === 0 ? "X axis" : "Y axis"
+                        }`
+                      : `Player ${index + 1}`}
+                  </span>
                   <kbd>
                     {binding
                       ? formatKeyCode(binding)
@@ -415,6 +645,9 @@ export default function App() {
     );
   }
 
+  const isCooperativeGame =
+    gameMode === "cooperative" && cooperativeGame !== null;
+
   return (
     <main className="game-screen">
       <header className="game-toolbar">
@@ -423,9 +656,13 @@ export default function App() {
           <div>
             <strong>Reel Rivals</strong>
             <small>
-              {leader && leader.score > 0
-                ? `${leader.name} leads with ${leader.score}`
-                : "The lake is wide open"}
+              {isCooperativeGame
+                ? cooperativeGame.score > 0
+                  ? `Team score ${cooperativeGame.score}`
+                  : "Two controls, one catch"
+                : leader && leader.score > 0
+                  ? `${leader.name} leads with ${leader.score}`
+                  : "The lake is wide open"}
             </small>
           </div>
         </div>
@@ -438,19 +675,26 @@ export default function App() {
         </div>
       </header>
 
-      <section
-        className={`lanes-grid ${lanes.length === 1 ? "single-player" : ""}`}
-        style={{ "--lane-count": lanes.length } as CSSProperties}
-      >
-        {lanes.map((lane) => (
-          <FishingLane key={lane.id} lane={lane} />
-        ))}
-      </section>
+      {isCooperativeGame ? (
+        <CooperativeBoard game={cooperativeGame} />
+      ) : (
+        <section
+          className={`lanes-grid ${
+            lanes.length === 1 ? "single-player" : ""
+          }`}
+          style={{ "--lane-count": lanes.length } as CSSProperties}
+        >
+          {lanes.map((lane) => (
+            <FishingLane key={lane.id} lane={lane} />
+          ))}
+        </section>
+      )}
 
       <footer className="game-footer">
         <span className="status-light" />
-        Hold your key to lift. Release it to fall. Keep the fish inside your
-        catch zone.
+        {isCooperativeGame
+          ? "X holds right and releases left. Y holds up and releases down. Keep the fish inside your shared zone."
+          : "Hold your key to lift. Release it to fall. Keep the fish inside your catch zone."}
       </footer>
 
       {paused && (
