@@ -139,6 +139,64 @@ button:focus-visible {
   line-height: 1.7;
 }
 
+.mode-picker {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.mode-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 5px 14px;
+  min-height: 116px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--coral);
+  background: rgba(8, 31, 34, 0.78);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    transform 150ms ease;
+}
+
+.mode-card:hover {
+  border-color: var(--coral);
+  transform: translateY(-2px);
+}
+
+.mode-card.cooperative-mode-card {
+  border-top-color: var(--lime);
+}
+
+.mode-card.cooperative-mode-card:hover {
+  border-color: var(--lime);
+}
+
+.mode-card .mode-number {
+  color: var(--muted);
+  font: 500 10px/1 "DM Mono", monospace;
+}
+
+.mode-card > strong {
+  grid-column: 1;
+  font-size: 22px;
+}
+
+.mode-card > small {
+  grid-column: 1;
+  color: var(--muted);
+}
+
+.mode-card > span:last-child {
+  grid-column: 2;
+  grid-row: 1 / 4;
+  align-self: center;
+  color: var(--lime);
+  font-size: 24px;
+}
+
 .primary-button {
   display: inline-flex;
   align-items: center;
@@ -420,6 +478,204 @@ button:focus-visible {
 
 .lanes-grid.single-player {
   max-width: 620px;
+}
+
+.cooperative-layout {
+  display: grid;
+  grid-template-columns: minmax(250px, 330px) minmax(0, 1fr);
+  gap: 10px;
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.cooperative-sidebar,
+.cooperative-play {
+  border: 1px solid var(--line);
+  background: #0c292c;
+}
+
+.cooperative-sidebar {
+  padding: 24px;
+}
+
+.cooperative-sidebar h2 {
+  margin: 0 0 28px;
+  font-size: clamp(28px, 4vw, 44px);
+  letter-spacing: -0.05em;
+  line-height: 1.05;
+}
+
+.cooperative-controls {
+  display: grid;
+  gap: 10px;
+}
+
+.axis-control {
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--player-color);
+  background: #092124;
+}
+
+.axis-control span,
+.axis-control strong,
+.axis-control small {
+  display: block;
+}
+
+.axis-control span {
+  color: var(--player-color);
+  font: 500 10px/1 "DM Mono", monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.axis-control strong {
+  margin: 8px 0 12px;
+}
+
+.axis-control kbd {
+  display: inline-block;
+  margin-right: 8px;
+  padding: 5px 8px;
+  border: 1px solid color-mix(in srgb, var(--player-color) 55%, transparent);
+  border-radius: 3px;
+  color: var(--player-color);
+  font: 500 12px/1 "DM Mono", monospace;
+}
+
+.axis-control small {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.cooperative-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  margin-top: 20px;
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+}
+
+.cooperative-stats > div {
+  padding: 12px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.cooperative-stats span,
+.cooperative-stats strong {
+  display: block;
+}
+
+.cooperative-stats span {
+  margin-bottom: 5px;
+  color: var(--muted);
+  font: 400 9px/1.2 "DM Mono", monospace;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.cooperative-play {
+  min-width: 0;
+  padding: 12px;
+}
+
+.water-plane {
+  position: relative;
+  height: clamp(430px, 67vh, 720px);
+  overflow: hidden;
+  border: 1px solid rgba(138, 223, 211, 0.18);
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 49px,
+      rgba(137, 227, 211, 0.045) 50px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 49px,
+      rgba(137, 227, 211, 0.045) 50px
+    ),
+    radial-gradient(circle at 50% 45%, #12565a, #0b3438 72%);
+}
+
+.cooperative-zone {
+  position: absolute;
+  z-index: 2;
+  border: 2px solid var(--lime);
+  border-radius: 8px;
+  background: rgba(216, 255, 114, 0.1);
+  box-shadow:
+    inset 0 0 28px rgba(216, 255, 114, 0.08),
+    0 0 18px rgba(0, 0, 0, 0.16);
+  transition:
+    background 100ms ease,
+    box-shadow 100ms ease;
+}
+
+.cooperative-zone::before,
+.cooperative-zone::after {
+  position: absolute;
+  content: "";
+  background: rgba(216, 255, 114, 0.34);
+}
+
+.cooperative-zone::before {
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 1px;
+}
+
+.cooperative-zone::after {
+  top: 0;
+  left: 50%;
+  width: 1px;
+  height: 100%;
+}
+
+.cooperative-zone.is-overlapping {
+  background: rgba(216, 255, 114, 0.23);
+  box-shadow:
+    inset 0 0 34px rgba(216, 255, 114, 0.15),
+    0 0 28px rgba(216, 255, 114, 0.24);
+}
+
+.axis-handle {
+  position: absolute;
+  z-index: 1;
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--deep);
+  font: 700 9px/1 "DM Mono", monospace;
+}
+
+.axis-handle-x {
+  top: 50%;
+  right: -12px;
+  background: var(--coral);
+  transform: translateY(-50%);
+}
+
+.axis-handle-y {
+  top: -12px;
+  left: 50%;
+  background: var(--lime);
+  transform: translateX(-50%);
+}
+
+.cooperative-fish {
+  transition: none;
+}
+
+.cooperative-progress {
+  padding: 15px 3px 4px;
 }
 
 .fishing-lane {
@@ -723,6 +979,38 @@ button:focus-visible {
   .water-column {
     height: 430px;
   }
+
+  .cooperative-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .cooperative-sidebar {
+    display: grid;
+    grid-template-columns: minmax(210px, 0.8fr) 1fr;
+    gap: 18px;
+  }
+
+  .cooperative-sidebar .eyebrow,
+  .cooperative-sidebar h2 {
+    grid-column: 1;
+  }
+
+  .cooperative-sidebar h2 {
+    margin-bottom: 0;
+  }
+
+  .cooperative-controls {
+    grid-column: 2;
+    grid-row: 1 / 3;
+  }
+
+  .cooperative-stats {
+    grid-column: 1 / -1;
+  }
+
+  .water-plane {
+    height: 520px;
+  }
 }
 
 @media (max-width: 680px) {
@@ -737,6 +1025,10 @@ button:focus-visible {
 
   .hero-card h1 {
     font-size: 70px;
+  }
+
+  .mode-picker {
+    grid-template-columns: 1fr;
   }
 
   .feature-row {
@@ -769,6 +1061,18 @@ button:focus-visible {
 
   .water-column {
     height: 500px;
+  }
+
+  .cooperative-sidebar {
+    display: block;
+  }
+
+  .cooperative-sidebar h2 {
+    margin-bottom: 24px;
+  }
+
+  .water-plane {
+    height: min(62vh, 520px);
   }
 
   .game-footer {
