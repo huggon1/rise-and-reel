@@ -12,6 +12,8 @@ Reel Rivals is a local fishing web game inspired by the tactile fishing loop in 
 6. Catch fish to earn points. Escaped fish reset the current streak but do not remove existing points.
 7. Timed matches freeze at 60 seconds and compare score, catches, escapes, best streak, overlap rate, and catch rate.
 
+Finished timed Rivals matches are saved in the current browser. Solo history includes a personal best, retained-match summary, and switchable score/overlap/catch-rate trends for the latest 20 matches. Local multiplayer matches are stored as whole head-to-head results with P1–P4 standings and can be filtered by player count. Solo and multiplayer histories each retain their latest 100 matches; practice and cooperative sessions are not recorded.
+
 Endless practice keeps generating fish without a timer or final standings. Practice scores are not treated as comparable match results.
 
 ## Cooperative gameplay
@@ -64,6 +66,10 @@ npm run preview
 - `src/game/match.ts` contains timed/practice match phases, countdowns, pausing, finishing, and rivals result calculation.
 - `src/game/cooperativeEngine.ts` contains the UI-independent two-axis cooperative simulation and shared round lifecycle.
 - `src/game/types.ts` defines the rivals, match, and cooperative state contracts.
+- `src/records/repository.ts` defines the small storage interface used by the UI.
+- `src/records/local-adapter.ts` provides versioned, fault-tolerant browser storage with separate solo and multiplayer limits.
+- `src/records/analytics.ts` derives solo summaries and chart-ready trends from saved runs.
+- `src/records/HistoryScreen.tsx` renders accessible local trends and match logs without coupling persistence to the game engine.
 - `src/styles.css` provides replaceable first-version visual styling without coupling presentation to the game engines.
 
-The game has no backend. All players use the same browser and keyboard. Rivals lanes update independently, while cooperative players intentionally share one arena and round state.
+The game has no backend. Match history and recent Rivals controls stay in the current browser through local storage. All players use the same browser and keyboard. Rivals lanes update independently, while cooperative players intentionally share one arena and round state.

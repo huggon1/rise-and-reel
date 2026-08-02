@@ -27,9 +27,17 @@ import type {
   MatchState,
   PlayerDefinition,
 } from "./game/types";
+import { HistoryScreen } from "./records/HistoryScreen";
+import { createLocalRunRepository } from "./records/local-adapter";
+import {
+  loadLocalPreferences,
+  saveLocalPreferences,
+} from "./records/preferences";
+import { createGameRun } from "./records/types";
 
-type Screen = "home" | "setup" | "game" | "results";
+type Screen = "home" | "setup" | "game" | "results" | "history";
 type PlayMode = "rivals" | "cooperative";
+type RunSaveState = "idle" | "saving" | "saved" | "error";
 
 const PLAYER_COLORS = ["#ffcf70", "#67d5c3", "#ff8f8f", "#b6a1ff"];
 const BLOCKED_BINDINGS = new Set([
@@ -66,6 +74,11 @@ const playersFromMatch = (match: MatchState): PlayerDefinition[] =>
   match.lanes.map(({ id, name, keyCode }) => ({ id, name, keyCode }));
 
 const formatPercent = (rate: number) => `${Math.round(rate * 100)}%`;
+
+const createRunId = () =>
+  typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 function FishingLane({ lane }: { lane: LaneState }) {
   const overlap = isFishOverlappingBar(lane);
@@ -293,12 +306,18 @@ function CooperativeBoard({ game }: { game: CooperativeState }) {
 
 function ResultsScreen({
   match,
+  saveState,
+  isPersonalBest,
   onPlayAgain,
   onHome,
+  onHistory,
 }: {
   match: MatchState;
+  saveState: RunSaveState;
+  isPersonalBest: boolean;
   onPlayAgain: () => void;
   onHome: () => void;
+  onHistory: () => void;
 }) {
   const results = getMatchResults(match);
 
@@ -310,6 +329,20 @@ function ResultsScreen({
         <p className="results-intro">
           Sixty seconds on the water. Here is how every angler finished.
         </p>
+        {match.lanes.length === 1 && isPersonalBest && (
+          <div className="personal-best-banner" role="status">
+            <span>New personal best</span>
+            <strong>{results[0].score} points</strong>
+          </div>
+        )}
+        {saveState === "saving" && (
+          <p className="save-message" role="status">Saving this match locally…</p>
+        )}
+        {saveState === "error" && (
+          <p className="save-message error" role="alert">
+            This match could not be saved, but you can still review the result.
+          </p>
+        )}
 
         <div className="results-list">
           {results.map((result) => (
@@ -368,6 +401,9 @@ function ResultsScreen({
           <button className="text-button" onClick={onHome}>
             Return home
           </button>
+          <button className="text-button" onClick={onHistory}>
+            View history
+          </button>
         </div>
       </section>
     </main>
@@ -375,19 +411,31 @@ function ResultsScreen({
 }
 
 export default function App() {
+  const runRepository = useMemo(
+    () => createLocalRunRepository(window.localStorage),
+    [],
+  );
+  const initialPreferences = useMemo(
+    () => loadLocalPreferences(window.localStorage),
+    [],
+  );
   const [screen, setScreen] = useState<Screen>("home");
   const [playMode, setPlayMode] = useState<PlayMode>("rivals");
   const [matchMode, setMatchMode] = useState<MatchMode>("timed");
-  const [playerCount, setPlayerCount] = useState(2);
+  const [playerCount, setPlayerCount] = useState(initialPreferences.playerCount);
   const [bindings, setBindings] = useState<(string | null)[]>(
-    initialRivalsBindings(2),
+    initialPreferences.bindings,
   );
   const [bindingError, setBindingError] = useState("");
   const [match, setMatch] = useState<MatchState | null>(null);
   const [cooperativeGame, setCooperativeGame] =
     useState<CooperativeState | null>(null);
   const [cooperativePaused, setCooperativePaused] = useState(false);
+  const [runSaveState, setRunSaveState] = useState<RunSaveState>("idle");
+  const [isPersonalBest, setIsPersonalBest] = useState(false);
   const pressedKeys = useRef(new Set<string>());
+  const activeRun = useRef<{ id: string; startedAt: Date } | null>(null);
+  const savedRunIds = useRef(new Set<string>());
 
   const nextBinding = bindings.findIndex((binding) => binding === null);
   const canStart = bindings.length === playerCount && nextBinding === -1;
@@ -530,6 +578,47 @@ export default function App() {
     }
   }, [match?.phase, playMode, screen]);
 
+  useEffect(() => {
+    if (screen !== "setup" || playMode !== "rivals") {
+      return;
+    }
+    try {
+      saveLocalPreferences(window.localStorage, { playerCount, bindings });
+    } catch {
+      // Preference persistence is optional and must never block setup.
+    }
+  }, [bindings, playerCount, playMode, screen]);
+
+  useEffect(() => {
+    if (
+      screen !== "results" ||
+      !match ||
+      match.mode !== "timed" ||
+      match.phase !== "finished" ||
+      !activeRun.current ||
+      savedRunIds.current.has(activeRun.current.id)
+    ) {
+      return;
+    }
+
+    const identity = activeRun.current;
+    savedRunIds.current.add(identity.id);
+    setRunSaveState("saving");
+    setIsPersonalBest(false);
+    const run = createGameRun(match, {
+      id: identity.id,
+      startedAt: identity.startedAt,
+      endedAt: new Date(),
+    });
+    void runRepository.saveRun(run).then(
+      (result) => {
+        setIsPersonalBest(result.isPersonalBest);
+        setRunSaveState("saved");
+      },
+      () => setRunSaveState("error"),
+    );
+  }, [match, runRepository, screen]);
+
   const selectPlayerCount = (count: number) => {
     setPlayerCount(count);
     setBindings(initialRivalsBindings(count));
@@ -537,13 +626,18 @@ export default function App() {
   };
 
   const beginSetup = (mode: PlayMode) => {
-    const setupPlayerCount = mode === "cooperative" ? 2 : playerCount;
+    const preferences =
+      mode === "rivals"
+        ? loadLocalPreferences(window.localStorage)
+        : null;
+    const setupPlayerCount =
+      mode === "cooperative" ? 2 : preferences?.playerCount ?? playerCount;
     setPlayMode(mode);
     setPlayerCount(setupPlayerCount);
     setBindings(
       mode === "cooperative"
         ? [null, null]
-        : initialRivalsBindings(setupPlayerCount),
+        : preferences?.bindings ?? initialRivalsBindings(setupPlayerCount),
     );
     setBindingError("");
     setScreen("setup");
@@ -555,7 +649,7 @@ export default function App() {
     }
     const players = bindings.map((keyCode, index) => ({
       id: index + 1,
-      name: `Player ${index + 1}`,
+      name: `P${index + 1}`,
       keyCode: keyCode!,
     }));
 
@@ -573,6 +667,12 @@ export default function App() {
     } else {
       setMatch(createMatch(matchMode, players));
       setCooperativeGame(null);
+      activeRun.current =
+        matchMode === "timed"
+          ? { id: createRunId(), startedAt: new Date() }
+          : null;
+      setRunSaveState("idle");
+      setIsPersonalBest(false);
     }
 
     pressedKeys.current.clear();
@@ -585,6 +685,12 @@ export default function App() {
       setCooperativePaused(false);
     } else if (match) {
       setMatch(createMatch(match.mode, playersFromMatch(match)));
+      activeRun.current =
+        match.mode === "timed"
+          ? { id: createRunId(), startedAt: new Date() }
+          : null;
+      setRunSaveState("idle");
+      setIsPersonalBest(false);
     }
     pressedKeys.current.clear();
     setScreen("game");
@@ -595,6 +701,9 @@ export default function App() {
     setMatch(null);
     setCooperativeGame(null);
     setCooperativePaused(false);
+    activeRun.current = null;
+    setRunSaveState("idle");
+    setIsPersonalBest(false);
     setScreen("home");
   };
 
@@ -644,6 +753,10 @@ export default function App() {
               <span aria-hidden="true">→</span>
             </button>
           </div>
+          <button className="history-link" onClick={() => setScreen("history")}>
+            View local match history
+            <span aria-hidden="true">↗</span>
+          </button>
           <div className="feature-row">
             <span>1–4 players</span>
             <span>One keyboard</span>
@@ -764,10 +877,10 @@ export default function App() {
                   >
                     <span>
                       {playMode === "cooperative"
-                        ? `Player ${index + 1} · ${
+                        ? `P${index + 1} · ${
                             index === 0 ? "X axis" : "Y axis"
                           }`
-                        : `Player ${index + 1}`}
+                        : `P${index + 1}`}
                     </span>
                     <kbd>
                       {binding
@@ -788,7 +901,7 @@ export default function App() {
                       bindings[0] === "Space"
                       ? "Space is ready. Click the control card to rebind."
                       : "Everyone is ready."
-                    : `Waiting for Player ${nextBinding + 1}.`)}
+                    : `Waiting for P${nextBinding + 1}.`)}
               </p>
             </div>
           </div>
@@ -810,10 +923,17 @@ export default function App() {
     return (
       <ResultsScreen
         match={match}
+        saveState={runSaveState}
+        isPersonalBest={isPersonalBest}
         onPlayAgain={restartGame}
         onHome={returnHome}
+        onHistory={() => setScreen("history")}
       />
     );
+  }
+
+  if (screen === "history") {
+    return <HistoryScreen repository={runRepository} onHome={returnHome} />;
   }
 
   if (!isCooperativeGame && !match) {
