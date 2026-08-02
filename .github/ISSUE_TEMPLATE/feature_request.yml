@@ -1,0 +1,25 @@
+name: Feature request
+description: Suggest an improvement that fits Reel Rivals.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Player need
+      description: What player problem or opportunity would this address?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the smallest useful version of the change.
+    validations:
+      required: true
+  - type: textarea
+    id: loop
+    attributes:
+      label: Effect on the fishing loop
+      description: Explain how this preserves or improves hold-to-rise, release-to-fall play.

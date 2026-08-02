@@ -2,6 +2,8 @@
 
 Reel Rivals is a local fishing web game inspired by the tactile fishing loop in Stardew Valley. Players can compete in independent one-dimensional lanes or coordinate a shared two-dimensional catch zone from the same keyboard.
 
+**Play the public version:** [reel-rivals.e-huggon1.workers.dev](https://reel-rivals.e-huggon1.workers.dev/)
+
 ## Rivals gameplay
 
 1. Choose a 60-second score match or endless practice.
@@ -57,6 +59,38 @@ npm test
 npm run build
 npm run preview
 ```
+
+CI runs the tests, production build, and a Cloudflare deployment dry-run on every pull request and every push to `main`.
+
+## Deployment
+
+The official site uses Cloudflare Workers Static Assets. It has no Worker script, dynamic bindings, database, analytics, or custom domain. Static files are served directly from the Vite `dist` directory.
+
+Authenticate Wrangler once, validate the package, and deploy:
+
+```bash
+npx wrangler login
+npm run deploy:cloudflare:dry-run
+npm run deploy:cloudflare
+```
+
+The checked-in `wrangler.jsonc` enables single-page application fallback, the default `workers.dev` address, and version preview URLs. To enable automatic Cloudflare builds from a fork:
+
+1. Import the GitHub repository from **Workers & Pages → Create application → Import a repository**.
+2. Use `main` as the production branch.
+3. Use `npm ci && npm test && npm run build` as the build command.
+4. Use `npx wrangler deploy` as the production deploy command.
+5. Keep the default preview command, `npx wrangler versions upload`, for non-production branches.
+
+Cloudflare is optional for self-hosters. `npm run build` produces a standard static `dist` directory that can be published to any host. Configure that host to serve `index.html` for unknown application routes.
+
+No Cloudflare credentials or service identifiers are stored in the repository.
+
+## Project policies
+
+- [Contributing](CONTRIBUTING.md)
+- [Privacy](PRIVACY.md)
+- [MIT License](LICENSE)
 
 ## Architecture
 

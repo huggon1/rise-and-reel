@@ -10,10 +10,15 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
+    "preview:cloudflare": "npm run build && wrangler dev",
+    "deploy:cloudflare": "npm test && npm run build && wrangler deploy",
+    "deploy:cloudflare:dry-run": "npm test && npm run build && wrangler deploy --dry-run",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@fontsource/dm-mono": "^5.3.0",
+    "@fontsource/manrope": "^5.3.0",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
@@ -23,6 +28,7 @@
     "@vitejs/plugin-react": "6.0.5",
     "typescript": "5.9.3",
     "vite": "8.2.0",
-    "vitest": "4.1.10"
+    "vitest": "4.1.10",
+    "wrangler": "^4.118.0"
   }
 }
