@@ -11,16 +11,25 @@ import {
   createCooperativeGame,
   isFishInsideCooperativeZone,
 } from "./game/cooperativeEngine";
-import { advanceLane, createLane } from "./game/engine";
+import { isFishOverlappingBar } from "./game/engine";
+import {
+  advanceMatch,
+  createMatch,
+  getMatchResults,
+  pauseMatch,
+  resumeMatch,
+} from "./game/match";
 import type {
   CooperativePlayerDefinition,
   CooperativeState,
+  GameMode as MatchMode,
   LaneState,
+  MatchState,
   PlayerDefinition,
 } from "./game/types";
 
-type Screen = "home" | "setup" | "game";
-type GameMode = "rivals" | "cooperative";
+type Screen = "home" | "setup" | "game" | "results";
+type PlayMode = "rivals" | "cooperative";
 
 const PLAYER_COLORS = ["#ffcf70", "#67d5c3", "#ff8f8f", "#b6a1ff"];
 const BLOCKED_BINDINGS = new Set([
@@ -48,16 +57,18 @@ const formatKeyCode = (code: string) =>
     .trim()
     .toUpperCase();
 
-const playerFromLane = (lane: LaneState): PlayerDefinition => ({
-  id: lane.id,
-  name: lane.name,
-  keyCode: lane.keyCode,
-});
+const initialRivalsBindings = (count: number) =>
+  count === 1
+    ? ["Space"]
+    : Array.from<string | null>({ length: count }).fill(null);
+
+const playersFromMatch = (match: MatchState): PlayerDefinition[] =>
+  match.lanes.map(({ id, name, keyCode }) => ({ id, name, keyCode }));
+
+const formatPercent = (rate: number) => `${Math.round(rate * 100)}%`;
 
 function FishingLane({ lane }: { lane: LaneState }) {
-  const overlap =
-    lane.fishY >= lane.barY &&
-    lane.fishY <= lane.barY + GAME_CONFIG.bar.height;
+  const overlap = isFishOverlappingBar(lane);
   const catchPercent = Math.round(lane.catchProgress * 100);
   const escapeWarning = lane.catchProgress <= 0.25;
   const laneStyle = {
@@ -89,8 +100,8 @@ function FishingLane({ lane }: { lane: LaneState }) {
           <strong>{lane.fish.name}</strong>
         </div>
         <div>
-          <span>Reward</span>
-          <strong>+{lane.fish.score}</strong>
+          <span>Streak</span>
+          <strong>{lane.streak}</strong>
         </div>
       </div>
 
@@ -212,9 +223,7 @@ function CooperativeBoard({ game }: { game: CooperativeState }) {
         <div className="water-plane">
           <div className="water-shimmer" />
           <div
-            className={`cooperative-zone ${
-              overlap ? "is-overlapping" : ""
-            }`}
+            className={`cooperative-zone ${overlap ? "is-overlapping" : ""}`}
             style={{
               left: `${(game.zoneX - zone.width / 2) * 100}%`,
               top: `${(game.zoneY - zone.height / 2) * 100}%`,
@@ -282,22 +291,109 @@ function CooperativeBoard({ game }: { game: CooperativeState }) {
   );
 }
 
+function ResultsScreen({
+  match,
+  onPlayAgain,
+  onHome,
+}: {
+  match: MatchState;
+  onPlayAgain: () => void;
+  onHome: () => void;
+}) {
+  const results = getMatchResults(match);
+
+  return (
+    <main className="screen results-screen">
+      <section className="results-card">
+        <p className="eyebrow">Lines up</p>
+        <h2>Final standings</h2>
+        <p className="results-intro">
+          Sixty seconds on the water. Here is how every angler finished.
+        </p>
+
+        <div className="results-list">
+          {results.map((result) => (
+            <article
+              className="result-row"
+              key={result.playerId}
+              style={
+                {
+                  "--player-color": PLAYER_COLORS[result.playerId - 1],
+                } as CSSProperties
+              }
+            >
+              <div className="result-place">
+                <span>Rank</span>
+                <strong>#{result.rank}</strong>
+              </div>
+              <div className="result-player">
+                <span className="player-dot" />
+                <strong>{result.name}</strong>
+              </div>
+              <dl>
+                <div>
+                  <dt>Score</dt>
+                  <dd>{result.score}</dd>
+                </div>
+                <div>
+                  <dt>Caught</dt>
+                  <dd>{result.catches}</dd>
+                </div>
+                <div>
+                  <dt>Escaped</dt>
+                  <dd>{result.escapes}</dd>
+                </div>
+                <div>
+                  <dt>Best streak</dt>
+                  <dd>{result.maxStreak}</dd>
+                </div>
+                <div>
+                  <dt>Overlap</dt>
+                  <dd>{formatPercent(result.overlapRate)}</dd>
+                </div>
+                <div>
+                  <dt>Catch rate</dt>
+                  <dd>{formatPercent(result.catchRate)}</dd>
+                </div>
+              </dl>
+            </article>
+          ))}
+        </div>
+
+        <div className="results-actions">
+          <button className="primary-button" onClick={onPlayAgain}>
+            Play again
+            <span aria-hidden="true">→</span>
+          </button>
+          <button className="text-button" onClick={onHome}>
+            Return home
+          </button>
+        </div>
+      </section>
+    </main>
+  );
+}
+
 export default function App() {
   const [screen, setScreen] = useState<Screen>("home");
-  const [gameMode, setGameMode] = useState<GameMode>("rivals");
+  const [playMode, setPlayMode] = useState<PlayMode>("rivals");
+  const [matchMode, setMatchMode] = useState<MatchMode>("timed");
   const [playerCount, setPlayerCount] = useState(2);
-  const [bindings, setBindings] = useState<(string | null)[]>([null, null]);
+  const [bindings, setBindings] = useState<(string | null)[]>(
+    initialRivalsBindings(2),
+  );
   const [bindingError, setBindingError] = useState("");
-  const [lanes, setLanes] = useState<LaneState[]>([]);
+  const [match, setMatch] = useState<MatchState | null>(null);
   const [cooperativeGame, setCooperativeGame] =
     useState<CooperativeState | null>(null);
-  const [paused, setPaused] = useState(false);
+  const [cooperativePaused, setCooperativePaused] = useState(false);
   const pressedKeys = useRef(new Set<string>());
 
   const nextBinding = bindings.findIndex((binding) => binding === null);
   const canStart = bindings.length === playerCount && nextBinding === -1;
+  const lanes = match?.lanes ?? [];
   const keySignature =
-    gameMode === "cooperative"
+    playMode === "cooperative"
       ? cooperativeGame?.players.map((player) => player.keyCode).join("|") ?? ""
       : lanes.map((lane) => lane.keyCode).join("|");
   const leader = useMemo(
@@ -307,6 +403,11 @@ export default function App() {
         : lanes.reduce((best, lane) => (lane.score > best.score ? lane : best)),
     [lanes],
   );
+  const isCooperativeGame =
+    playMode === "cooperative" && cooperativeGame !== null;
+  const isPaused = isCooperativeGame
+    ? cooperativePaused
+    : match?.phase === "paused";
 
   useEffect(() => {
     if (screen !== "setup") {
@@ -372,7 +473,7 @@ export default function App() {
   }, [keySignature, screen]);
 
   useEffect(() => {
-    if (screen !== "game" || paused) {
+    if (screen !== "game" || isPaused) {
       pressedKeys.current.clear();
       return;
     }
@@ -382,17 +483,14 @@ export default function App() {
     const tick = (currentTime: number) => {
       const elapsed = (currentTime - previousTime) / 1000;
       previousTime = currentTime;
-      if (gameMode === "cooperative") {
+
+      if (playMode === "cooperative") {
         setCooperativeGame((current) => {
           if (!current) {
             return current;
           }
-          const xPlayer = current.players.find(
-            (player) => player.axis === "x",
-          );
-          const yPlayer = current.players.find(
-            (player) => player.axis === "y",
-          );
+          const xPlayer = current.players.find((player) => player.axis === "x");
+          const yPlayer = current.players.find((player) => player.axis === "y");
           return advanceCooperativeGame(
             current,
             {
@@ -407,34 +505,46 @@ export default function App() {
           );
         });
       } else {
-        setLanes((current) =>
-          current.map((lane) =>
-            advanceLane(
-              lane,
-              pressedKeys.current.has(lane.keyCode),
-              elapsed,
-            ),
-          ),
+        setMatch((current) =>
+          current
+            ? advanceMatch(current, pressedKeys.current, elapsed)
+            : current,
         );
       }
+
       animationFrame = requestAnimationFrame(tick);
     };
 
     animationFrame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(animationFrame);
-  }, [gameMode, paused, screen]);
+  }, [isPaused, playMode, screen]);
+
+  useEffect(() => {
+    if (
+      screen === "game" &&
+      playMode === "rivals" &&
+      match?.phase === "finished"
+    ) {
+      pressedKeys.current.clear();
+      setScreen("results");
+    }
+  }, [match?.phase, playMode, screen]);
 
   const selectPlayerCount = (count: number) => {
     setPlayerCount(count);
-    setBindings(Array.from({ length: count }, () => null));
+    setBindings(initialRivalsBindings(count));
     setBindingError("");
   };
 
-  const beginSetup = (mode: GameMode) => {
+  const beginSetup = (mode: PlayMode) => {
     const setupPlayerCount = mode === "cooperative" ? 2 : playerCount;
-    setGameMode(mode);
+    setPlayMode(mode);
     setPlayerCount(setupPlayerCount);
-    setBindings(Array.from({ length: setupPlayerCount }, () => null));
+    setBindings(
+      mode === "cooperative"
+        ? [null, null]
+        : initialRivalsBindings(setupPlayerCount),
+    );
     setBindingError("");
     setScreen("setup");
   };
@@ -448,7 +558,8 @@ export default function App() {
       name: `Player ${index + 1}`,
       keyCode: keyCode!,
     }));
-    if (gameMode === "cooperative") {
+
+    if (playMode === "cooperative") {
       const cooperativePlayers = players.map((player, index) => ({
         ...player,
         axis: index === 0 ? "x" : "y",
@@ -457,32 +568,49 @@ export default function App() {
         CooperativePlayerDefinition,
       ];
       setCooperativeGame(createCooperativeGame(cooperativePlayers));
-      setLanes([]);
+      setMatch(null);
+      setCooperativePaused(false);
     } else {
-      setLanes(players.map((player) => createLane(player)));
+      setMatch(createMatch(matchMode, players));
       setCooperativeGame(null);
     }
-    setPaused(false);
+
+    pressedKeys.current.clear();
     setScreen("game");
   };
 
   const restartGame = () => {
-    if (gameMode === "cooperative") {
-      setCooperativeGame((current) =>
-        current ? createCooperativeGame(current.players) : current,
-      );
-    } else {
-      setLanes((current) =>
-        current.map((lane) => createLane(playerFromLane(lane))),
-      );
+    if (isCooperativeGame) {
+      setCooperativeGame(createCooperativeGame(cooperativeGame.players));
+      setCooperativePaused(false);
+    } else if (match) {
+      setMatch(createMatch(match.mode, playersFromMatch(match)));
     }
-    setPaused(false);
+    pressedKeys.current.clear();
+    setScreen("game");
   };
 
   const returnHome = () => {
     pressedKeys.current.clear();
-    setPaused(false);
+    setMatch(null);
+    setCooperativeGame(null);
+    setCooperativePaused(false);
     setScreen("home");
+  };
+
+  const togglePause = () => {
+    if (isCooperativeGame) {
+      setCooperativePaused((current) => !current);
+      return;
+    }
+    setMatch((current) => {
+      if (!current) {
+        return current;
+      }
+      return current.phase === "paused"
+        ? resumeMatch(current)
+        : pauseMatch(current);
+    });
   };
 
   if (screen === "home") {
@@ -500,13 +628,10 @@ export default function App() {
             land one shared catch.
           </p>
           <div className="mode-picker">
-            <button
-              className="mode-card"
-              onClick={() => beginSetup("rivals")}
-            >
+            <button className="mode-card" onClick={() => beginSetup("rivals")}>
               <span className="mode-number">01</span>
               <strong>Rivals</strong>
-              <small>1–4 independent lanes</small>
+              <small>60-second matches or endless practice</small>
               <span aria-hidden="true">→</span>
             </button>
             <button
@@ -530,6 +655,8 @@ export default function App() {
   }
 
   if (screen === "setup") {
+    const controlSectionNumber = playMode === "cooperative" ? "01" : "03";
+
     return (
       <main className="screen setup-screen">
         <section className="setup-card">
@@ -537,99 +664,133 @@ export default function App() {
             ← Back
           </button>
           <p className="eyebrow">
-            {gameMode === "cooperative" ? "Co-op setup" : "Rivals setup"}
+            {playMode === "cooperative" ? "Co-op setup" : "Rivals setup"}
           </p>
           <h2>
-            {gameMode === "cooperative"
+            {playMode === "cooperative"
               ? "Split the controls. Share the catch."
               : "Bring everyone to the dock."}
           </h2>
           <p className="setup-intro">
-            {gameMode === "cooperative"
+            {playMode === "cooperative"
               ? "Bind one key for each axis. Both players must coordinate to keep the moving fish inside one shared catch zone."
-              : "Pick a player count, then have each player press the key they want to hold while fishing."}
+              : "Choose a match type and player count, then give every angler a key."}
           </p>
 
-          {gameMode === "rivals" && (
-            <div className="setup-section">
-              <div className="section-heading">
-                <span>01</span>
-                <div>
-                  <strong>Players</strong>
-                  <small>Choose how many lanes to open.</small>
+          {playMode === "rivals" && (
+            <>
+              <div className="setup-section">
+                <div className="section-heading">
+                  <span>01</span>
+                  <div>
+                    <strong>Match</strong>
+                    <small>Race the clock or settle in and practice.</small>
+                  </div>
+                </div>
+                <div className="match-mode-picker">
+                  <button
+                    className={matchMode === "timed" ? "selected" : ""}
+                    onClick={() => setMatchMode("timed")}
+                  >
+                    <strong>60-second score</strong>
+                    <small>Countdown, compete, then compare results.</small>
+                  </button>
+                  <button
+                    className={matchMode === "practice" ? "selected" : ""}
+                    onClick={() => setMatchMode("practice")}
+                  >
+                    <strong>Endless practice</strong>
+                    <small>No timer, no standings, just keep fishing.</small>
+                  </button>
                 </div>
               </div>
-              <div className="count-picker">
-                {[1, 2, 3, 4].map((count) => (
-                  <button
-                    key={count}
-                    className={playerCount === count ? "selected" : ""}
-                    onClick={() => selectPlayerCount(count)}
-                  >
-                    {count}
-                  </button>
-                ))}
+
+              <div className="setup-section">
+                <div className="section-heading">
+                  <span>02</span>
+                  <div>
+                    <strong>Players</strong>
+                    <small>Choose how many lanes to open.</small>
+                  </div>
+                </div>
+                <div className="count-picker">
+                  {[1, 2, 3, 4].map((count) => (
+                    <button
+                      key={count}
+                      className={playerCount === count ? "selected" : ""}
+                      onClick={() => selectPlayerCount(count)}
+                    >
+                      {count}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            </>
           )}
 
           <div className="setup-section">
             <div className="section-heading">
-              <span>{gameMode === "cooperative" ? "01" : "02"}</span>
+              <span>{controlSectionNumber}</span>
               <div>
                 <strong>Controls</strong>
                 <small>
-                  {gameMode === "cooperative"
+                  {playMode === "cooperative"
                     ? "One key moves each axis."
                     : "Every player needs a different key."}
                 </small>
               </div>
             </div>
-            <div className="binding-grid">
-              {bindings.map((binding, index) => (
-                <button
-                  className={`binding-card ${
-                    index === nextBinding ? "listening" : ""
-                  }`}
-                  key={index}
-                  onClick={() => {
-                    setBindings((current) =>
-                      current.map((value, itemIndex) =>
-                        itemIndex === index ? null : value,
-                      ),
-                    );
-                    setBindingError("");
-                  }}
-                  style={
-                    {
-                      "--player-color": PLAYER_COLORS[index],
-                    } as CSSProperties
-                  }
-                >
-                  <span>
-                    {gameMode === "cooperative"
-                      ? `Player ${index + 1} · ${
-                          index === 0 ? "X axis" : "Y axis"
-                        }`
-                      : `Player ${index + 1}`}
-                  </span>
-                  <kbd>
-                    {binding
-                      ? formatKeyCode(binding)
-                      : index === nextBinding
-                        ? "PRESS A KEY"
-                        : "WAITING"}
-                  </kbd>
-                  <small>{binding ? "Click to rebind" : "Listening…"}</small>
-                </button>
-              ))}
+            <div>
+              <div className="binding-grid">
+                {bindings.map((binding, index) => (
+                  <button
+                    className={`binding-card ${
+                      index === nextBinding ? "listening" : ""
+                    }`}
+                    key={index}
+                    onClick={() => {
+                      setBindings((current) =>
+                        current.map((value, itemIndex) =>
+                          itemIndex === index ? null : value,
+                        ),
+                      );
+                      setBindingError("");
+                    }}
+                    style={
+                      {
+                        "--player-color": PLAYER_COLORS[index],
+                      } as CSSProperties
+                    }
+                  >
+                    <span>
+                      {playMode === "cooperative"
+                        ? `Player ${index + 1} · ${
+                            index === 0 ? "X axis" : "Y axis"
+                          }`
+                        : `Player ${index + 1}`}
+                    </span>
+                    <kbd>
+                      {binding
+                        ? formatKeyCode(binding)
+                        : index === nextBinding
+                          ? "PRESS A KEY"
+                          : "WAITING"}
+                    </kbd>
+                    <small>{binding ? "Click to rebind" : "Listening…"}</small>
+                  </button>
+                ))}
+              </div>
+              <p className={`binding-message ${bindingError ? "error" : ""}`}>
+                {bindingError ||
+                  (canStart
+                    ? playMode === "rivals" &&
+                      playerCount === 1 &&
+                      bindings[0] === "Space"
+                      ? "Space is ready. Click the control card to rebind."
+                      : "Everyone is ready."
+                    : `Waiting for Player ${nextBinding + 1}.`)}
+              </p>
             </div>
-            <p className={`binding-message ${bindingError ? "error" : ""}`}>
-              {bindingError ||
-                (canStart
-                  ? "Everyone is ready."
-                  : `Waiting for Player ${nextBinding + 1}.`)}
-            </p>
           </div>
 
           <button
@@ -645,8 +806,25 @@ export default function App() {
     );
   }
 
-  const isCooperativeGame =
-    gameMode === "cooperative" && cooperativeGame !== null;
+  if (screen === "results" && match) {
+    return (
+      <ResultsScreen
+        match={match}
+        onPlayAgain={restartGame}
+        onHome={returnHome}
+      />
+    );
+  }
+
+  if (!isCooperativeGame && !match) {
+    return null;
+  }
+
+  const clock = isCooperativeGame
+    ? "Co-op"
+    : match?.mode === "timed"
+      ? `${Math.ceil(match.remainingSeconds ?? 0)}s`
+      : "Practice";
 
   return (
     <main className="game-screen">
@@ -662,14 +840,24 @@ export default function App() {
                   : "Two controls, one catch"
                 : leader && leader.score > 0
                   ? `${leader.name} leads with ${leader.score}`
-                  : "The lake is wide open"}
+                  : match?.mode === "timed"
+                    ? "Sixty seconds. Make every catch count."
+                    : "Practice water — no score record"}
             </small>
           </div>
         </div>
+        <div className="match-status" aria-live="polite">
+          <span>
+            {isCooperativeGame
+              ? "Mode"
+              : match?.mode === "timed"
+                ? "Time left"
+                : "Mode"}
+          </span>
+          <strong>{clock}</strong>
+        </div>
         <div className="game-actions">
-          <button onClick={() => setPaused((current) => !current)}>
-            {paused ? "Resume" : "Pause"}
-          </button>
+          <button onClick={togglePause}>{isPaused ? "Resume" : "Pause"}</button>
           <button onClick={restartGame}>Restart</button>
           <button onClick={returnHome}>Home</button>
         </div>
@@ -679,9 +867,7 @@ export default function App() {
         <CooperativeBoard game={cooperativeGame} />
       ) : (
         <section
-          className={`lanes-grid ${
-            lanes.length === 1 ? "single-player" : ""
-          }`}
+          className={`lanes-grid ${lanes.length === 1 ? "single-player" : ""}`}
           style={{ "--lane-count": lanes.length } as CSSProperties}
         >
           {lanes.map((lane) => (
@@ -697,15 +883,22 @@ export default function App() {
           : "Hold your key to lift. Release it to fall. Keep the fish inside your catch zone."}
       </footer>
 
-      {paused && (
+      {!isCooperativeGame && match?.phase === "countdown" && (
+        <div className="countdown-overlay" aria-live="assertive">
+          <div>
+            <p className="eyebrow">Get ready</p>
+            <strong>{Math.max(1, Math.ceil(match.countdownSeconds))}</strong>
+            <span>Lines drop when the count reaches zero.</span>
+          </div>
+        </div>
+      )}
+
+      {isPaused && (
         <div className="pause-overlay">
           <div>
             <p className="eyebrow">Lines held</p>
             <h2>Game paused</h2>
-            <button
-              className="primary-button"
-              onClick={() => setPaused(false)}
-            >
+            <button className="primary-button" onClick={togglePause}>
               Resume fishing
             </button>
           </div>

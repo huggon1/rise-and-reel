@@ -53,19 +53,24 @@ export const chooseFish = (
 
 const newRound = (
   player: PlayerDefinition,
-  score: number,
-  catches: number,
-  streak: number,
+  totals: Pick<
+    LaneState,
+    | "score"
+    | "catches"
+    | "escapes"
+    | "streak"
+    | "maxStreak"
+    | "overlapSeconds"
+    | "activeSeconds"
+  >,
   random: RandomSource,
 ): LaneState => {
-  const fish = chooseFish(catches, random);
+  const fish = chooseFish(totals.catches, random);
   const fishY = randomBetween(0.14, 0.86, random);
 
   return {
     ...player,
-    score,
-    catches,
-    streak,
+    ...totals,
     phase: "fishing",
     phaseTime: 0,
     fish,
@@ -87,7 +92,20 @@ const newRound = (
 export const createLane = (
   player: PlayerDefinition,
   random: RandomSource = Math.random,
-): LaneState => newRound(player, 0, 0, 0, random);
+): LaneState =>
+  newRound(
+    player,
+    {
+      score: 0,
+      catches: 0,
+      escapes: 0,
+      streak: 0,
+      maxStreak: 0,
+      overlapSeconds: 0,
+      activeSeconds: 0,
+    },
+    random,
+  );
 
 const updateBar = (lane: LaneState, pressed: boolean, delta: number) => {
   const bar = GAME_CONFIG.bar;
@@ -180,15 +198,14 @@ export const advanceLane = (
     GAME_CONFIG.simulation.maxDeltaSeconds,
   );
   const lane = { ...current };
+  lane.activeSeconds += delta;
 
   if (lane.phase !== "fishing") {
     lane.phaseTime -= delta;
     if (lane.phaseTime <= 0) {
       return newRound(
+        { id: lane.id, name: lane.name, keyCode: lane.keyCode },
         lane,
-        lane.score,
-        lane.catches,
-        lane.streak,
         random,
       );
     }
@@ -199,6 +216,7 @@ export const advanceLane = (
   updateFish(lane, delta, random);
 
   if (isFishOverlappingBar(lane)) {
+    lane.overlapSeconds += delta;
     lane.catchProgress = Math.min(
       1,
       lane.catchProgress + GAME_CONFIG.catch.gainPerSecond * delta,
@@ -216,10 +234,12 @@ export const advanceLane = (
     lane.score += lane.fish.score;
     lane.catches += 1;
     lane.streak += 1;
+    lane.maxStreak = Math.max(lane.maxStreak, lane.streak);
     lane.lastReward = lane.fish.score;
   } else if (lane.catchProgress <= 0) {
     lane.phase = "escaped";
     lane.phaseTime = GAME_CONFIG.round.escapedDisplaySeconds;
+    lane.escapes += 1;
     lane.streak = 0;
     lane.lastReward = 0;
   }
