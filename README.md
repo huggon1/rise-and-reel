@@ -1,8 +1,8 @@
 # Reel Rivals
 
-Reel Rivals is a local fishing web game inspired by the tactile fishing loop in Stardew Valley. One to four players share one keyboard, control independent catch bars, and compete in 60-second matches or fish freely in endless practice.
+Reel Rivals is a local fishing web game inspired by the tactile fishing loop in Stardew Valley. Players can compete in independent one-dimensional lanes or coordinate a shared two-dimensional catch zone from the same keyboard.
 
-## Gameplay
+## Rivals gameplay
 
 1. Choose a 60-second score match or endless practice.
 2. Choose one, two, three, or four players.
@@ -11,6 +11,17 @@ Reel Rivals is a local fishing web game inspired by the tactile fishing loop in 
 5. Keep the moving fish inside the catch bar to fill the catch meter.
 6. Catch fish to earn points. Escaped fish reset the current streak but do not remove existing points.
 7. Timed matches freeze at 60 seconds and compare score, catches, escapes, best streak, overlap rate, and catch rate.
+
+Endless practice keeps generating fish without a timer or final standings. Practice scores are not treated as comparable match results.
+
+## Cooperative gameplay
+
+1. Choose Co-op from the home screen.
+2. Bind one key for the X axis and one key for the Y axis.
+3. Player 1 holds to move the shared catch zone right and releases to move it left.
+4. Player 2 holds to move the shared catch zone up and releases to move it down.
+5. Keep the moving fish inside the shared two-dimensional zone to fill one team catch meter.
+6. Catches, escapes, score, streak, fish selection, and round transitions are shared by the team.
 
 Each new fish starts with the catch meter at 50%. A perfect overlap catches it in about 2.3 seconds, while a completely missed fish takes about 4.5 seconds to escape.
 
@@ -23,7 +34,7 @@ The first version includes four fish:
 | Catfish | Hard | 50 |
 | Squid | Extreme | 100 |
 
-Harder fish change targets more frequently, move faster, and struggle more unpredictably. Higher-difficulty fish become more common as a player catches more fish.
+Harder fish change targets more frequently, move faster, and struggle more unpredictably. Higher-difficulty fish become more common as a player or team catches more fish.
 
 ## Local development
 
@@ -47,11 +58,12 @@ npm run preview
 
 ## Architecture
 
-- `src/App.tsx` owns screen navigation, player setup, keyboard bindings, and the animation loop.
-- `src/game/config.ts` centralizes catch-bar physics, catch rates, round timing, and fish tuning.
-- `src/game/engine.ts` contains the UI-independent fishing simulation and round lifecycle.
-- `src/game/match.ts` contains timed/practice match phases, countdowns, pausing, finishing, and result calculation.
-- `src/game/types.ts` defines the game state and fish data contracts.
-- `src/styles.css` provides replaceable first-version visual styling without coupling presentation to the game engine.
+- `src/App.tsx` owns screen navigation, mode setup, keyboard bindings, and the animation loop.
+- `src/game/config.ts` centralizes catch-bar physics, catch rates, round timing, cooperative controls, and fish tuning.
+- `src/game/engine.ts` contains the UI-independent rivals simulation and round lifecycle.
+- `src/game/match.ts` contains timed/practice match phases, countdowns, pausing, finishing, and rivals result calculation.
+- `src/game/cooperativeEngine.ts` contains the UI-independent two-axis cooperative simulation and shared round lifecycle.
+- `src/game/types.ts` defines the rivals, match, and cooperative state contracts.
+- `src/styles.css` provides replaceable first-version visual styling without coupling presentation to the game engines.
 
-The game has no backend. All players use the same browser and keyboard, and each fishing lane updates independently.
+The game has no backend. All players use the same browser and keyboard. Rivals lanes update independently, while cooperative players intentionally share one arena and round state.

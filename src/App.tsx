@@ -6,6 +6,11 @@ import {
   type CSSProperties,
 } from "react";
 import { GAME_CONFIG } from "./game/config";
+import {
+  advanceCooperativeGame,
+  createCooperativeGame,
+  isFishInsideCooperativeZone,
+} from "./game/cooperativeEngine";
 import { isFishOverlappingBar } from "./game/engine";
 import {
   advanceMatch,
@@ -15,13 +20,16 @@ import {
   resumeMatch,
 } from "./game/match";
 import type {
-  GameMode,
+  CooperativePlayerDefinition,
+  CooperativeState,
+  GameMode as MatchMode,
   LaneState,
   MatchState,
   PlayerDefinition,
 } from "./game/types";
 
 type Screen = "home" | "setup" | "game" | "results";
+type PlayMode = "rivals" | "cooperative";
 
 const PLAYER_COLORS = ["#ffcf70", "#67d5c3", "#ff8f8f", "#b6a1ff"];
 const BLOCKED_BINDINGS = new Set([
@@ -49,7 +57,7 @@ const formatKeyCode = (code: string) =>
     .trim()
     .toUpperCase();
 
-const initialBindings = (count: number) =>
+const initialRivalsBindings = (count: number) =>
   count === 1
     ? ["Space"]
     : Array.from<string | null>({ length: count }).fill(null);
@@ -155,6 +163,134 @@ function FishingLane({ lane }: { lane: LaneState }) {
   );
 }
 
+function CooperativeBoard({ game }: { game: CooperativeState }) {
+  const overlap = isFishInsideCooperativeZone(game);
+  const catchPercent = Math.round(game.catchProgress * 100);
+  const escapeWarning = game.catchProgress <= 0.25;
+  const zone = GAME_CONFIG.cooperative.zone;
+  const boardStyle = {
+    "--fish-color": game.fish.color,
+  } as CSSProperties;
+
+  return (
+    <section className="cooperative-layout" style={boardStyle}>
+      <aside className="cooperative-sidebar">
+        <p className="eyebrow">Two anglers · one catch</p>
+        <h2>Coordinate the zone.</h2>
+        <div className="cooperative-controls">
+          {game.players.map((player) => (
+            <div
+              className="axis-control"
+              key={player.axis}
+              style={
+                {
+                  "--player-color": PLAYER_COLORS[player.id - 1],
+                } as CSSProperties
+              }
+            >
+              <span>{player.axis.toUpperCase()} axis</span>
+              <strong>{player.name}</strong>
+              <kbd>{formatKeyCode(player.keyCode)}</kbd>
+              <small>
+                {player.axis === "x"
+                  ? "Hold right · release left"
+                  : "Hold up · release down"}
+              </small>
+            </div>
+          ))}
+        </div>
+        <div className="cooperative-stats">
+          <div>
+            <span>Team score</span>
+            <strong>{game.score}</strong>
+          </div>
+          <div>
+            <span>Caught</span>
+            <strong>{game.catches}</strong>
+          </div>
+          <div>
+            <span>Streak</span>
+            <strong>{game.streak}</strong>
+          </div>
+          <div>
+            <span>Fish</span>
+            <strong>{game.fish.name}</strong>
+          </div>
+        </div>
+      </aside>
+
+      <div className="cooperative-play">
+        <div className="water-plane">
+          <div className="water-shimmer" />
+          <div
+            className={`cooperative-zone ${overlap ? "is-overlapping" : ""}`}
+            style={{
+              left: `${(game.zoneX - zone.width / 2) * 100}%`,
+              top: `${(game.zoneY - zone.height / 2) * 100}%`,
+              width: `${zone.width * 100}%`,
+              height: `${zone.height * 100}%`,
+            }}
+          >
+            <span className="axis-handle axis-handle-x">X</span>
+            <span className="axis-handle axis-handle-y">Y</span>
+          </div>
+          <div
+            className={`fish-marker cooperative-fish ${
+              overlap ? "is-overlapping" : ""
+            }`}
+            style={{
+              left: `${game.fishX * 100}%`,
+              top: `${game.fishY * 100}%`,
+            }}
+            aria-label={`${game.fish.name}, ${game.fish.difficulty} difficulty`}
+          >
+            <span>{game.fish.symbol}</span>
+          </div>
+
+          {game.phase !== "fishing" && (
+            <div className={`round-result ${game.phase}`}>
+              <strong>
+                {game.phase === "caught"
+                  ? `Team catch! +${game.lastReward}`
+                  : "The fish escaped"}
+              </strong>
+              <span>Next fish incoming</span>
+            </div>
+          )}
+        </div>
+
+        <div
+          className={`progress-block cooperative-progress ${
+            escapeWarning ? "is-warning" : ""
+          }`}
+        >
+          <div className="progress-copy">
+            <span>Shared catch meter</span>
+            <strong>{catchPercent}%</strong>
+          </div>
+          <div
+            className="progress-track"
+            role="progressbar"
+            aria-label="Shared catch meter"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={catchPercent}
+          >
+            <span
+              className="progress-fill"
+              style={{ width: `${game.catchProgress * 100}%` }}
+            />
+          </div>
+          <div className="meter-endpoints" aria-hidden="true">
+            <span>Escape</span>
+            <span>Catch</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function ResultsScreen({
   match,
   onPlayAgain,
@@ -240,19 +376,26 @@ function ResultsScreen({
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("home");
-  const [mode, setMode] = useState<GameMode>("timed");
+  const [playMode, setPlayMode] = useState<PlayMode>("rivals");
+  const [matchMode, setMatchMode] = useState<MatchMode>("timed");
   const [playerCount, setPlayerCount] = useState(2);
   const [bindings, setBindings] = useState<(string | null)[]>(
-    initialBindings(2),
+    initialRivalsBindings(2),
   );
   const [bindingError, setBindingError] = useState("");
   const [match, setMatch] = useState<MatchState | null>(null);
+  const [cooperativeGame, setCooperativeGame] =
+    useState<CooperativeState | null>(null);
+  const [cooperativePaused, setCooperativePaused] = useState(false);
   const pressedKeys = useRef(new Set<string>());
 
   const nextBinding = bindings.findIndex((binding) => binding === null);
   const canStart = bindings.length === playerCount && nextBinding === -1;
   const lanes = match?.lanes ?? [];
-  const keySignature = lanes.map((lane) => lane.keyCode).join("|");
+  const keySignature =
+    playMode === "cooperative"
+      ? cooperativeGame?.players.map((player) => player.keyCode).join("|") ?? ""
+      : lanes.map((lane) => lane.keyCode).join("|");
   const leader = useMemo(
     () =>
       lanes.length === 0
@@ -260,6 +403,11 @@ export default function App() {
         : lanes.reduce((best, lane) => (lane.score > best.score ? lane : best)),
     [lanes],
   );
+  const isCooperativeGame =
+    playMode === "cooperative" && cooperativeGame !== null;
+  const isPaused = isCooperativeGame
+    ? cooperativePaused
+    : match?.phase === "paused";
 
   useEffect(() => {
     if (screen !== "setup") {
@@ -325,7 +473,7 @@ export default function App() {
   }, [keySignature, screen]);
 
   useEffect(() => {
-    if (screen !== "game" || match?.phase === "paused") {
+    if (screen !== "game" || isPaused) {
       pressedKeys.current.clear();
       return;
     }
@@ -335,33 +483,68 @@ export default function App() {
     const tick = (currentTime: number) => {
       const elapsed = (currentTime - previousTime) / 1000;
       previousTime = currentTime;
-      setMatch((current) =>
-        current
-          ? advanceMatch(current, pressedKeys.current, elapsed)
-          : current,
-      );
+
+      if (playMode === "cooperative") {
+        setCooperativeGame((current) => {
+          if (!current) {
+            return current;
+          }
+          const xPlayer = current.players.find((player) => player.axis === "x");
+          const yPlayer = current.players.find((player) => player.axis === "y");
+          return advanceCooperativeGame(
+            current,
+            {
+              xPressed: Boolean(
+                xPlayer && pressedKeys.current.has(xPlayer.keyCode),
+              ),
+              yPressed: Boolean(
+                yPlayer && pressedKeys.current.has(yPlayer.keyCode),
+              ),
+            },
+            elapsed,
+          );
+        });
+      } else {
+        setMatch((current) =>
+          current
+            ? advanceMatch(current, pressedKeys.current, elapsed)
+            : current,
+        );
+      }
+
       animationFrame = requestAnimationFrame(tick);
     };
 
     animationFrame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(animationFrame);
-  }, [match?.phase, screen]);
+  }, [isPaused, playMode, screen]);
 
   useEffect(() => {
-    if (screen === "game" && match?.phase === "finished") {
+    if (
+      screen === "game" &&
+      playMode === "rivals" &&
+      match?.phase === "finished"
+    ) {
       pressedKeys.current.clear();
       setScreen("results");
     }
-  }, [match?.phase, screen]);
+  }, [match?.phase, playMode, screen]);
 
   const selectPlayerCount = (count: number) => {
     setPlayerCount(count);
-    setBindings(initialBindings(count));
+    setBindings(initialRivalsBindings(count));
     setBindingError("");
   };
 
-  const beginSetup = () => {
-    setBindings(initialBindings(playerCount));
+  const beginSetup = (mode: PlayMode) => {
+    const setupPlayerCount = mode === "cooperative" ? 2 : playerCount;
+    setPlayMode(mode);
+    setPlayerCount(setupPlayerCount);
+    setBindings(
+      mode === "cooperative"
+        ? [null, null]
+        : initialRivalsBindings(setupPlayerCount),
+    );
     setBindingError("");
     setScreen("setup");
   };
@@ -375,16 +558,34 @@ export default function App() {
       name: `Player ${index + 1}`,
       keyCode: keyCode!,
     }));
-    setMatch(createMatch(mode, players));
+
+    if (playMode === "cooperative") {
+      const cooperativePlayers = players.map((player, index) => ({
+        ...player,
+        axis: index === 0 ? "x" : "y",
+      })) as [
+        CooperativePlayerDefinition,
+        CooperativePlayerDefinition,
+      ];
+      setCooperativeGame(createCooperativeGame(cooperativePlayers));
+      setMatch(null);
+      setCooperativePaused(false);
+    } else {
+      setMatch(createMatch(matchMode, players));
+      setCooperativeGame(null);
+    }
+
     pressedKeys.current.clear();
     setScreen("game");
   };
 
   const restartGame = () => {
-    if (!match) {
-      return;
+    if (isCooperativeGame) {
+      setCooperativeGame(createCooperativeGame(cooperativeGame.players));
+      setCooperativePaused(false);
+    } else if (match) {
+      setMatch(createMatch(match.mode, playersFromMatch(match)));
     }
-    setMatch(createMatch(match.mode, playersFromMatch(match)));
     pressedKeys.current.clear();
     setScreen("game");
   };
@@ -392,10 +593,16 @@ export default function App() {
   const returnHome = () => {
     pressedKeys.current.clear();
     setMatch(null);
+    setCooperativeGame(null);
+    setCooperativePaused(false);
     setScreen("home");
   };
 
   const togglePause = () => {
+    if (isCooperativeGame) {
+      setCooperativePaused((current) => !current);
+      return;
+    }
     setMatch((current) => {
       if (!current) {
         return current;
@@ -417,17 +624,30 @@ export default function App() {
             <span>Rivals</span>
           </h1>
           <p className="hero-copy">
-            Hold to rise. Release to fall. Stay with the fish and outscore
-            everyone beside you.
+            Face off in independent fishing lanes, or coordinate two axes to
+            land one shared catch.
           </p>
-          <button className="primary-button" onClick={beginSetup}>
-            Set up a game
-            <span aria-hidden="true">→</span>
-          </button>
+          <div className="mode-picker">
+            <button className="mode-card" onClick={() => beginSetup("rivals")}>
+              <span className="mode-number">01</span>
+              <strong>Rivals</strong>
+              <small>60-second matches or endless practice</small>
+              <span aria-hidden="true">→</span>
+            </button>
+            <button
+              className="mode-card cooperative-mode-card"
+              onClick={() => beginSetup("cooperative")}
+            >
+              <span className="mode-number">02</span>
+              <strong>Co-op</strong>
+              <small>Two players · one 2D zone</small>
+              <span aria-hidden="true">→</span>
+            </button>
+          </div>
           <div className="feature-row">
             <span>1–4 players</span>
-            <span>60-second matches</span>
-            <span>Endless practice</span>
+            <span>One keyboard</span>
+            <span>Rivals or co-op</span>
           </div>
         </section>
       </main>
@@ -435,71 +655,89 @@ export default function App() {
   }
 
   if (screen === "setup") {
+    const controlSectionNumber = playMode === "cooperative" ? "01" : "03";
+
     return (
       <main className="screen setup-screen">
         <section className="setup-card">
           <button className="text-button back-button" onClick={returnHome}>
             ← Back
           </button>
-          <p className="eyebrow">Game setup</p>
-          <h2>Bring everyone to the dock.</h2>
+          <p className="eyebrow">
+            {playMode === "cooperative" ? "Co-op setup" : "Rivals setup"}
+          </p>
+          <h2>
+            {playMode === "cooperative"
+              ? "Split the controls. Share the catch."
+              : "Bring everyone to the dock."}
+          </h2>
           <p className="setup-intro">
-            Choose a mode and player count, then give every angler a key.
+            {playMode === "cooperative"
+              ? "Bind one key for each axis. Both players must coordinate to keep the moving fish inside one shared catch zone."
+              : "Choose a match type and player count, then give every angler a key."}
           </p>
 
-          <div className="setup-section">
-            <div className="section-heading">
-              <span>01</span>
-              <div>
-                <strong>Mode</strong>
-                <small>Race the clock or settle in and practice.</small>
+          {playMode === "rivals" && (
+            <>
+              <div className="setup-section">
+                <div className="section-heading">
+                  <span>01</span>
+                  <div>
+                    <strong>Match</strong>
+                    <small>Race the clock or settle in and practice.</small>
+                  </div>
+                </div>
+                <div className="match-mode-picker">
+                  <button
+                    className={matchMode === "timed" ? "selected" : ""}
+                    onClick={() => setMatchMode("timed")}
+                  >
+                    <strong>60-second score</strong>
+                    <small>Countdown, compete, then compare results.</small>
+                  </button>
+                  <button
+                    className={matchMode === "practice" ? "selected" : ""}
+                    onClick={() => setMatchMode("practice")}
+                  >
+                    <strong>Endless practice</strong>
+                    <small>No timer, no standings, just keep fishing.</small>
+                  </button>
+                </div>
               </div>
-            </div>
-            <div className="mode-picker">
-              <button
-                className={mode === "timed" ? "selected" : ""}
-                onClick={() => setMode("timed")}
-              >
-                <strong>60-second score</strong>
-                <small>Countdown, compete, then compare results.</small>
-              </button>
-              <button
-                className={mode === "practice" ? "selected" : ""}
-                onClick={() => setMode("practice")}
-              >
-                <strong>Endless practice</strong>
-                <small>No timer, no standings, just keep fishing.</small>
-              </button>
-            </div>
-          </div>
+
+              <div className="setup-section">
+                <div className="section-heading">
+                  <span>02</span>
+                  <div>
+                    <strong>Players</strong>
+                    <small>Choose how many lanes to open.</small>
+                  </div>
+                </div>
+                <div className="count-picker">
+                  {[1, 2, 3, 4].map((count) => (
+                    <button
+                      key={count}
+                      className={playerCount === count ? "selected" : ""}
+                      onClick={() => selectPlayerCount(count)}
+                    >
+                      {count}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
 
           <div className="setup-section">
             <div className="section-heading">
-              <span>02</span>
-              <div>
-                <strong>Players</strong>
-                <small>Choose how many lanes to open.</small>
-              </div>
-            </div>
-            <div className="count-picker">
-              {[1, 2, 3, 4].map((count) => (
-                <button
-                  key={count}
-                  className={playerCount === count ? "selected" : ""}
-                  onClick={() => selectPlayerCount(count)}
-                >
-                  {count}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="setup-section">
-            <div className="section-heading">
-              <span>03</span>
+              <span>{controlSectionNumber}</span>
               <div>
                 <strong>Controls</strong>
-                <small>Every player needs a different key.</small>
+                <small>
+                  {playMode === "cooperative"
+                    ? "One key moves each axis."
+                    : "Every player needs a different key."}
+                </small>
               </div>
             </div>
             <div>
@@ -524,7 +762,13 @@ export default function App() {
                       } as CSSProperties
                     }
                   >
-                    <span>Player {index + 1}</span>
+                    <span>
+                      {playMode === "cooperative"
+                        ? `Player ${index + 1} · ${
+                            index === 0 ? "X axis" : "Y axis"
+                          }`
+                        : `Player ${index + 1}`}
+                    </span>
                     <kbd>
                       {binding
                         ? formatKeyCode(binding)
@@ -539,7 +783,9 @@ export default function App() {
               <p className={`binding-message ${bindingError ? "error" : ""}`}>
                 {bindingError ||
                   (canStart
-                    ? playerCount === 1 && bindings[0] === "Space"
+                    ? playMode === "rivals" &&
+                      playerCount === 1 &&
+                      bindings[0] === "Space"
                       ? "Space is ready. Click the control card to rebind."
                       : "Everyone is ready."
                     : `Waiting for Player ${nextBinding + 1}.`)}
@@ -570,13 +816,13 @@ export default function App() {
     );
   }
 
-  if (!match) {
+  if (!isCooperativeGame && !match) {
     return null;
   }
 
-  const isPaused = match.phase === "paused";
-  const clock =
-    match.mode === "timed"
+  const clock = isCooperativeGame
+    ? "Co-op"
+    : match?.mode === "timed"
       ? `${Math.ceil(match.remainingSeconds ?? 0)}s`
       : "Practice";
 
@@ -588,16 +834,26 @@ export default function App() {
           <div>
             <strong>Reel Rivals</strong>
             <small>
-              {leader && leader.score > 0
-                ? `${leader.name} leads with ${leader.score}`
-                : match.mode === "timed"
-                  ? "Sixty seconds. Make every catch count."
-                  : "Practice water — no score record"}
+              {isCooperativeGame
+                ? cooperativeGame.score > 0
+                  ? `Team score ${cooperativeGame.score}`
+                  : "Two controls, one catch"
+                : leader && leader.score > 0
+                  ? `${leader.name} leads with ${leader.score}`
+                  : match?.mode === "timed"
+                    ? "Sixty seconds. Make every catch count."
+                    : "Practice water — no score record"}
             </small>
           </div>
         </div>
         <div className="match-status" aria-live="polite">
-          <span>{match.mode === "timed" ? "Time left" : "Mode"}</span>
+          <span>
+            {isCooperativeGame
+              ? "Mode"
+              : match?.mode === "timed"
+                ? "Time left"
+                : "Mode"}
+          </span>
           <strong>{clock}</strong>
         </div>
         <div className="game-actions">
@@ -607,22 +863,27 @@ export default function App() {
         </div>
       </header>
 
-      <section
-        className={`lanes-grid ${lanes.length === 1 ? "single-player" : ""}`}
-        style={{ "--lane-count": lanes.length } as CSSProperties}
-      >
-        {lanes.map((lane) => (
-          <FishingLane key={lane.id} lane={lane} />
-        ))}
-      </section>
+      {isCooperativeGame ? (
+        <CooperativeBoard game={cooperativeGame} />
+      ) : (
+        <section
+          className={`lanes-grid ${lanes.length === 1 ? "single-player" : ""}`}
+          style={{ "--lane-count": lanes.length } as CSSProperties}
+        >
+          {lanes.map((lane) => (
+            <FishingLane key={lane.id} lane={lane} />
+          ))}
+        </section>
+      )}
 
       <footer className="game-footer">
         <span className="status-light" />
-        Hold your key to lift. Release it to fall. Keep the fish inside your
-        catch zone.
+        {isCooperativeGame
+          ? "X holds right and releases left. Y holds up and releases down. Keep the fish inside your shared zone."
+          : "Hold your key to lift. Release it to fall. Keep the fish inside your catch zone."}
       </footer>
 
-      {match.phase === "countdown" && (
+      {!isCooperativeGame && match?.phase === "countdown" && (
         <div className="countdown-overlay" aria-live="assertive">
           <div>
             <p className="eyebrow">Get ready</p>
