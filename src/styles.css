@@ -1,9 +1,7 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap");
-
 :root {
   color: #f7f4e9;
   background: #071c20;
-  font-family: "Manrope", sans-serif;
+  font-family: "Manrope", ui-sans-serif, system-ui, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   --ink: #f7f4e9;
@@ -110,7 +108,7 @@ button:focus-visible {
 .eyebrow {
   margin: 0 0 18px;
   color: var(--lime);
-  font: 500 12px/1.2 "DM Mono", monospace;
+  font: 500 12px/1.2 "DM Mono", ui-monospace, monospace;
   letter-spacing: 0.18em;
   text-transform: uppercase;
 }
@@ -176,7 +174,7 @@ button:focus-visible {
 
 .mode-card .mode-number {
   color: var(--muted);
-  font: 500 10px/1 "DM Mono", monospace;
+  font: 500 10px/1 "DM Mono", ui-monospace, monospace;
 }
 
 .mode-card > strong {
@@ -230,7 +228,7 @@ button:focus-visible {
   gap: 24px;
   margin-top: 48px;
   color: var(--muted);
-  font: 500 11px/1 "DM Mono", monospace;
+  font: 500 11px/1 "DM Mono", ui-monospace, monospace;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -304,7 +302,7 @@ button:focus-visible {
 
 .section-heading > span {
   color: var(--coral);
-  font: 500 12px/1.5 "DM Mono", monospace;
+  font: 500 12px/1.5 "DM Mono", ui-monospace, monospace;
 }
 
 .section-heading strong,
@@ -368,7 +366,7 @@ button:focus-visible {
   border: 1px solid var(--line);
   background: #0a2225;
   color: var(--muted);
-  font: 500 22px/1 "DM Mono", monospace;
+  font: 500 22px/1 "DM Mono", ui-monospace, monospace;
   cursor: pointer;
 }
 
@@ -420,7 +418,7 @@ button:focus-visible {
 .binding-card kbd {
   margin: 12px 0 9px;
   color: var(--player-color);
-  font: 500 20px/1.2 "DM Mono", monospace;
+  font: 500 20px/1.2 "DM Mono", ui-monospace, monospace;
 }
 
 .binding-card small {
@@ -509,14 +507,14 @@ button:focus-visible {
 .match-status span {
   margin-bottom: 3px;
   color: var(--muted);
-  font: 400 9px/1 "DM Mono", monospace;
+  font: 400 9px/1 "DM Mono", ui-monospace, monospace;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .match-status strong {
   color: var(--lime);
-  font: 500 18px/1.2 "DM Mono", monospace;
+  font: 500 18px/1.2 "DM Mono", ui-monospace, monospace;
 }
 
 .game-actions button {
@@ -592,7 +590,7 @@ button:focus-visible {
 
 .axis-control span {
   color: var(--player-color);
-  font: 500 10px/1 "DM Mono", monospace;
+  font: 500 10px/1 "DM Mono", ui-monospace, monospace;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -608,7 +606,7 @@ button:focus-visible {
   border: 1px solid color-mix(in srgb, var(--player-color) 55%, transparent);
   border-radius: 3px;
   color: var(--player-color);
-  font: 500 12px/1 "DM Mono", monospace;
+  font: 500 12px/1 "DM Mono", ui-monospace, monospace;
 }
 
 .axis-control small {
@@ -639,7 +637,7 @@ button:focus-visible {
 .cooperative-stats span {
   margin-bottom: 5px;
   color: var(--muted);
-  font: 400 9px/1.2 "DM Mono", monospace;
+  font: 400 9px/1.2 "DM Mono", ui-monospace, monospace;
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
@@ -719,7 +717,7 @@ button:focus-visible {
   place-items: center;
   border-radius: 50%;
   color: var(--deep);
-  font: 700 9px/1 "DM Mono", monospace;
+  font: 700 9px/1 "DM Mono", ui-monospace, monospace;
 }
 
 .axis-handle-x {
@@ -778,7 +776,7 @@ button:focus-visible {
   border: 1px solid color-mix(in srgb, var(--player-color) 55%, transparent);
   border-radius: 3px;
   color: var(--player-color);
-  font: 500 12px/1 "DM Mono", monospace;
+  font: 500 12px/1 "DM Mono", ui-monospace, monospace;
 }
 
 .lane-stats {
@@ -801,7 +799,7 @@ button:focus-visible {
 .lane-stats span {
   margin-bottom: 3px;
   color: var(--muted);
-  font: 400 9px/1.2 "DM Mono", monospace;
+  font: 400 9px/1.2 "DM Mono", ui-monospace, monospace;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -969,7 +967,7 @@ button:focus-visible {
 
 .progress-copy strong {
   color: var(--ink);
-  font-family: "DM Mono", monospace;
+  font-family: "DM Mono", ui-monospace, monospace;
 }
 
 .progress-track {
@@ -998,7 +996,7 @@ button:focus-visible {
   justify-content: space-between;
   margin-top: 6px;
   color: #66817d;
-  font: 400 8px/1 "DM Mono", monospace;
+  font: 400 8px/1 "DM Mono", ui-monospace, monospace;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -1045,7 +1043,7 @@ button:focus-visible {
 
 .countdown-overlay strong {
   color: var(--lime);
-  font: 500 clamp(100px, 22vw, 240px)/0.82 "DM Mono", monospace;
+  font: 500 clamp(100px, 22vw, 240px)/0.82 "DM Mono", ui-monospace, monospace;
 }
 
 .countdown-overlay span {
@@ -1113,7 +1111,7 @@ button:focus-visible {
 
 .result-place span {
   color: var(--muted);
-  font: 400 8px/1 "DM Mono", monospace;
+  font: 400 8px/1 "DM Mono", ui-monospace, monospace;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -1121,7 +1119,7 @@ button:focus-visible {
 .result-place strong {
   margin-top: 5px;
   color: var(--player-color);
-  font: 500 24px/1 "DM Mono", monospace;
+  font: 500 24px/1 "DM Mono", ui-monospace, monospace;
 }
 
 .result-player {
@@ -1143,14 +1141,14 @@ button:focus-visible {
 
 .result-row dt {
   color: var(--muted);
-  font: 400 8px/1.2 "DM Mono", monospace;
+  font: 400 8px/1.2 "DM Mono", ui-monospace, monospace;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
 .result-row dd {
   margin: 6px 0 0;
-  font: 500 16px/1 "DM Mono", monospace;
+  font: 500 16px/1 "DM Mono", ui-monospace, monospace;
 }
 
 .results-actions {
@@ -1192,7 +1190,7 @@ button:focus-visible {
 }
 
 .personal-best-banner span {
-  font: 500 10px/1 "DM Mono", monospace;
+  font: 500 10px/1 "DM Mono", ui-monospace, monospace;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -1325,14 +1323,14 @@ button:focus-visible {
 .history-summary span,
 .history-section-heading > div > span {
   color: var(--muted);
-  font: 400 9px/1.25 "DM Mono", monospace;
+  font: 400 9px/1.25 "DM Mono", ui-monospace, monospace;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .history-summary strong {
   margin-top: 7px;
-  font: 500 20px/1 "DM Mono", monospace;
+  font: 500 20px/1 "DM Mono", ui-monospace, monospace;
 }
 
 .best-note {
@@ -1428,7 +1426,7 @@ button:focus-visible {
 
 .trend-data-list strong {
   color: var(--lime);
-  font-family: "DM Mono", monospace;
+  font-family: "DM Mono", ui-monospace, monospace;
 }
 
 .history-empty {
@@ -1492,14 +1490,14 @@ button:focus-visible {
 .run-row dt,
 .versus-details dt {
   color: var(--muted);
-  font: 400 8px/1.2 "DM Mono", monospace;
+  font: 400 8px/1.2 "DM Mono", ui-monospace, monospace;
   text-transform: uppercase;
 }
 
 .run-row dd,
 .versus-details dd {
   margin: 6px 0 0;
-  font: 500 14px/1 "DM Mono", monospace;
+  font: 500 14px/1 "DM Mono", ui-monospace, monospace;
 }
 
 .player-filter {
@@ -1546,7 +1544,7 @@ button:focus-visible {
   padding: 7px 9px;
   border: 1px solid var(--line);
   color: var(--muted);
-  font: 400 10px/1 "DM Mono", monospace;
+  font: 400 10px/1 "DM Mono", ui-monospace, monospace;
 }
 
 .versus-scores strong {
