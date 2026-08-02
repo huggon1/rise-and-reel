@@ -88,6 +88,8 @@ describe("round lifecycle", () => {
     expect(lane.phase).toBe("caught");
     expect(lane.score).toBe(reward);
     expect(lane.catches).toBe(1);
+    expect(lane.streak).toBe(1);
+    expect(lane.maxStreak).toBe(1);
   });
 
   it("does not deduct score when a fish escapes", () => {
@@ -112,6 +114,8 @@ describe("round lifecycle", () => {
     expect(lane.phase).toBe("escaped");
     expect(lane.score).toBe(75);
     expect(lane.catches).toBe(0);
+    expect(lane.escapes).toBe(1);
+    expect(lane.streak).toBe(0);
   });
 
   it("uses the catch meter reaching zero as the escape condition", () => {
@@ -210,6 +214,7 @@ describe("round lifecycle", () => {
     expect(lane.phase).toBe("fishing");
     expect(lane.score).toBe(125);
     expect(lane.catches).toBe(3);
+    expect(lane.escapes).toBe(0);
     expect(lane.catchProgress).toBe(GAME_CONFIG.catch.initialProgress);
   });
 });

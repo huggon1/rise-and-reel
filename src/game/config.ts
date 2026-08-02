@@ -1,6 +1,10 @@
 import type { FishDefinition } from "./types";
 
 export const GAME_CONFIG = {
+  match: {
+    countdownSeconds: 3,
+    timedDurationSeconds: 60,
+  },
   bar: {
     height: 0.24,
     gravity: 1.82,

@@ -2,6 +2,10 @@ export type FishId = "carp" | "bass" | "catfish" | "squid";
 
 export type RoundPhase = "fishing" | "caught" | "escaped";
 
+export type GameMode = "timed" | "practice";
+
+export type MatchPhase = "countdown" | "playing" | "paused" | "finished";
+
 export interface FishDefinition {
   id: FishId;
   name: string;
@@ -29,7 +33,11 @@ export interface PlayerDefinition {
 export interface LaneState extends PlayerDefinition {
   score: number;
   catches: number;
+  escapes: number;
   streak: number;
+  maxStreak: number;
+  overlapSeconds: number;
+  activeSeconds: number;
   phase: RoundPhase;
   phaseTime: number;
   fish: FishDefinition;
@@ -41,4 +49,25 @@ export interface LaneState extends PlayerDefinition {
   barVelocity: number;
   catchProgress: number;
   lastReward: number;
+}
+
+export interface MatchState {
+  mode: GameMode;
+  phase: MatchPhase;
+  pausedFrom: Exclude<MatchPhase, "paused" | "finished"> | null;
+  countdownSeconds: number;
+  remainingSeconds: number | null;
+  lanes: LaneState[];
+}
+
+export interface PlayerResult {
+  playerId: number;
+  name: string;
+  rank: number;
+  score: number;
+  catches: number;
+  escapes: number;
+  maxStreak: number;
+  overlapRate: number;
+  catchRate: number;
 }
