@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="HUG-10 UI and bilingual copy prototype for Rise & Reel / 鱼线起落."
+      content="HUG-10 UI and bilingual copy prototype for Rise & Reel."
     />
     <title>HUG-10 · Rise & Reel wayfinding prototype</title>
     <style>
@@ -82,6 +82,9 @@
       .intro h1 { max-width: 850px; font-size: clamp(42px, 7vw, 90px); line-height: .92; letter-spacing: -.075em; }
       .intro h1 em { color: var(--lime); font-style: normal; }
       .intro-copy { max-width: 760px; margin-top: 21px; color: var(--muted); font-size: 17px; line-height: 1.65; }
+      .minimal-copy { max-width: 620px; color: var(--muted); font-size: 14px; line-height: 1.6; }
+      .minimal-one-col { grid-template-columns: minmax(0, 1fr); }
+      .minimal-c-body { grid-template-columns: minmax(0, 1fr); }
 
       .guardrails { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; margin: 28px 0 38px; }
       .guardrail { min-height: 86px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: rgba(16, 40, 43, .72); }
@@ -375,73 +378,45 @@
       }
     </style>
   </head>
-  <body data-language="both">
+  <body data-language="en">
     <main class="prototype-shell">
       <header class="prototype-topbar">
         <div class="prototype-mark">HUG-10 · UI prototype</div>
         <div class="prototype-meta">
           <a href="https://linear.app/huggon1/issue/HUG-10/设计三类游玩的入口结构与双语产品文案" target="_blank" rel="noreferrer">Open ticket ↗</a>
           <div class="language-picker" aria-label="Language preview">
-            <button type="button" data-language="both" class="is-active">双语</button>
-            <button type="button" data-language="en">EN</button>
+            <button type="button" data-language="en" class="is-active">EN</button>
             <button type="button" data-language="zh">中文</button>
           </div>
         </div>
       </header>
 
       <section class="intro">
-        <p class="kicker">A route for every kind of fishing / 三种游玩的同一条路</p>
-        <h1>Choose a way to fish.<br /><em>Keep the water shared.</em></h1>
-        <p class="intro-copy">
-          This throwaway prototype tests three information architectures for Rise &amp; Reel / 鱼线起落. The copy is intentionally bilingual and follows the locked session, summary, and record vocabulary from the Wayfinder map.
-        </p>
-      </section>
-
-      <section class="guardrails" aria-label="Product guardrails">
-        <div class="guardrail"><strong>One session model / 一个会话模型</strong><span>Home → setup → fishing session → shared summary.</span></div>
-        <div class="guardrail"><strong>Three modes / 三类游玩</strong><span>Solo, side by side, or 2D — no winner language.</span></div>
-        <div class="guardrail"><strong>Local records / 本地记录</strong><span>Each mode keeps its own best and lifetime score.</span></div>
-        <div class="guardrail"><strong>No account / 无需注册</strong><span>Checkpoint recovery is not a completed record.</span></div>
+        <p class="kicker">HUG-10 · Wayfinding prototype</p>
+        <h1>Rise &amp; Reel</h1>
       </section>
 
       <section class="variant" data-variant="A">
         <div class="variant-heading">
-          <div><p class="variant-index">A · Harbor Gate / 港口门廊</p><h2>Invite first, explain second.</h2></div>
-          <p>Editorial split layout. The primary decision is a welcoming “choose how to fish” moment; the route keeps the rest of the flow legible without turning it into a dashboard.</p>
+          <div><p class="variant-index">A · Harbor Gate / 港口门廊</p><h2>Entry + mode selection</h2></div>
         </div>
         <div class="app-frame variant-a" data-app="A"></div>
       </section>
 
       <section class="variant" data-variant="B">
         <div class="variant-heading">
-          <div><p class="variant-index">B · Tide Map / 潮汐地图</p><h2>Make the whole product visible.</h2></div>
-          <p>Utility shell with a persistent rail. The mode list is the working surface, while records and settings stay one click away for repeat visitors.</p>
+          <div><p class="variant-index">B · Tide Map / 潮汐地图</p><h2>Entry + mode selection</h2></div>
         </div>
         <div class="app-frame variant-b" data-app="B"></div>
       </section>
 
       <section class="variant" data-variant="C">
         <div class="variant-heading">
-          <div><p class="variant-index">C · Current Flow / 水流引导</p><h2>Turn the journey into a calm sequence.</h2></div>
-          <p>Step-by-step flow. The current stage gets the focus; terminology and constraints stay in a narrow side rail so the page never feels like a competitive lobby.</p>
+          <div><p class="variant-index">C · Current Flow / 水流引导</p><h2>Entry + mode selection</h2></div>
         </div>
         <div class="app-frame variant-c" data-app="C"></div>
       </section>
 
-      <section class="audit">
-        <div class="audit-head">
-          <div><p class="eyebrow">Copy audit / 文案清理</p><h3>Words to keep, words to retire.</h3></div>
-          <p>These are deliberate product-language changes, not translation preferences. They protect the shared, replayable promise.</p>
-        </div>
-        <div class="audit-grid">
-          <article class="audit-item keep"><span class="badge">✓</span><div><strong>Keep · Session / 会话</strong><p>Use <code>Fishing Session / 钓鱼会话</code>, <code>Session Summary / 会话总结</code>, and <code>Group Exit / 整组离开</code>.</p></div></article>
-          <article class="audit-item drop"><span class="badge">×</span><div><strong>Retire · Match / 比赛</strong><p>Delete <del>match</del>, <del>timed match</del>, and <del>practice</del>; v1 has one session model.</p></div></article>
-          <article class="audit-item keep"><span class="badge">✓</span><div><strong>Keep · Shared-Screen / 同屏</strong><p>Describe 2–4 independent lanes without implying co-op, versus, a winner, or online multiplayer.</p></div></article>
-          <article class="audit-item drop"><span class="badge">×</span><div><strong>Retire · Competition / 竞技</strong><p>Delete <del>rivals</del>, <del>co-op</del>, <del>leaderboard</del>, <del>standings</del>, and winner language.</p></div></article>
-          <article class="audit-item keep"><span class="badge">✓</span><div><strong>Keep · Session Score / 会话得分</strong><p>Show score, catches, escapes, and best streak. Call retained progress <code>Lifetime Score / 累计得分</code>.</p></div></article>
-          <article class="audit-item drop"><span class="badge">×</span><div><strong>Retire · Accuracy / 准确率</strong><p>Delete <del>accuracy</del> and <del>overlap rate</del>; they add an unnecessary competitive measure.</p></div></article>
-        </div>
-      </section>
     </main>
 
     <div class="prototype-switcher" aria-label="Prototype variants">
@@ -465,7 +440,7 @@
           mode: "solo",
           recordTab: "solo",
         };
-        if (!VARIANTS.includes(state.variant)) state.variant = "A";
+        if (!VARIANTS.includes(state.variant)) state.variant = "B";
 
         const bilingual = (en, zh, className = "copy-stack") => `
           <span class="${className}"><span class="en">${en}</span><span class="zh">${zh}</span></span>`;
@@ -548,17 +523,44 @@
 
         const cHome = () => `<div class="c-layout"><div class="c-flow-head"><div class="brand-lockup"><strong>Rise &amp; Reel</strong><span>鱼线起落</span></div><div class="stepper" aria-label="Flow steps"><span class="is-current">01</span><i></i><span>02</span><i></i><span>03</span><i></i><span>04</span></div></div><div class="c-body"><div class="c-stage"><p class="stage-no">Step 01 · Choose / 第 01 步 · 选择</p><h3>${bilingual("Choose your way into the water.", "选择进入水面的方式。")}</h3><p>${bilingual("There is no right way to play. Pick the shape that fits the people around this screen.", "没有唯一正确的玩法。选择适合这块屏幕前所有人的方式。")}</p><div class="c-options">${cOptions()}</div><div class="screen-actions"><button type="button" class="primary-action" data-screen="setup">${bilingual("Next: set up", "下一步：设置", "inline-copy")} <span>→</span></button></div></div><aside class="c-notes"><h4>${bilingual("The promise", "产品承诺")}</h4><div class="c-note"><strong>01 · ${bilingual("One session", "一个会话")}</strong><p>${bilingual("No timed/practice split in v1.", "v1 不区分限时或练习。")}</p></div><div class="c-note"><strong>02 · ${bilingual("Shared finish", "共享结束")}</strong><p>${bilingual("Everyone leaves together; one summary follows.", "整组一起离开；随后显示一张总结。")}</p></div><div class="c-note"><strong>03 · ${bilingual("Local memory", "本地记忆")}</strong><p>${bilingual("Only completed sessions update records.", "只有已完成会话更新记录。")}</p></div></aside></div></div>`;
 
+        const minimalNav = (active = state.screen) => `<div class="app-nav"><div class="brand-lockup"><strong>Rise &amp; Reel</strong></div><div class="nav-actions">${["home", "modes", "records", "settings"].map((item) => {
+          const labels = { home: ["Home", "首页"], modes: ["Modes", "游玩方式"], records: ["Records", "记录"], settings: ["Settings", "设置"] }[item];
+          return `<button type="button" class="nav-button ${active === item ? "is-active" : ""}" data-screen="${item}">${bilingual(labels[0], labels[1], "inline-copy")}</button>`;
+        }).join("")}</div></div>`;
+        const gameplayCopy = () => `<p class="minimal-copy">${bilingual("Hold to raise the catch bar. Release to lower it. Keep the fish inside until you land the catch. Play solo, side by side, or in 2D.", "按住让钓鱼条上升，松手让它下降。把鱼保持在条内，直到成功钓上来。支持单人、同屏和 2D 游玩。")}</p>`;
+        const minimalModeRows = (selected = mode()) => ["solo", "shared", "twoD"].map((key, index) => {
+          const [en, zh] = modeLabel(key);
+          const [descEn, descZh] = modeDescription(key);
+          return `<button type="button" class="b-mode-row ${selected === key ? "is-selected" : ""}" data-mode="${key}">
+            <span class="number">0${index + 1}</span>
+            <span><strong>${bilingual(en, zh)}</strong><small>${bilingual(descEn, descZh)}</small></span>
+            <span class="arrow">→</span>
+          </button>`;
+        }).join("");
+        const minimalHome = (variant) => {
+          if (variant === "A") return `${minimalNav("home")}<div class="a-home"><div class="a-hero"><div class="brand-lockup"><strong>Rise &amp; Reel</strong></div><div class="a-hero-title"><p class="eyebrow">Choose a mode / 选择游玩方式</p><h3>${bilingual("Choose a mode", "选择游玩方式")}</h3>${gameplayCopy()}</div><div class="a-hero-bottom"><button type="button" class="primary-action" data-screen="modes">${bilingual("Choose a mode", "选择游玩方式", "inline-copy")} <span>→</span></button></div></div><aside class="a-route"><p class="eyebrow">Modes / 游玩方式</p><div class="mode-list">${modeOptions()}</div></aside></div>`;
+          if (variant === "B") return `<div class="b-layout"><aside class="b-rail"><div class="brand-lockup"><strong>Rise &amp; Reel</strong></div><nav class="rail-nav">${["home", "modes", "records", "settings"].map((item) => { const labels = { home: ["Home", "首页"], modes: ["Modes", "游玩方式"], records: ["Records", "记录"], settings: ["Settings", "设置"] }[item]; return `<button type="button" class="nav-button ${state.screen === item ? "is-active" : ""}" data-screen="${item}">${bilingual(labels[0], labels[1], "inline-copy")}</button>`; }).join("")}</nav></aside><div class="b-main"><div class="b-topline"><span class="status">${bilingual("Choose a mode", "选择游玩方式", "inline-copy")}</span></div><div class="screen-inner"><div class="b-home-header"><div><p class="eyebrow">Modes / 游玩方式</p><h3>${bilingual("Choose a mode", "选择游玩方式")}</h3></div></div>${gameplayCopy()}<div class="b-mode-table">${minimalModeRows()}</div></div></div></div>`;
+          return `${minimalNav("home")}<div class="c-layout"><div class="c-flow-head"><div class="brand-lockup"><strong>Rise &amp; Reel</strong></div><div class="stepper" aria-label="Flow steps"><span class="is-current">01</span><i></i><span>02</span><i></i><span>03</span><i></i><span>04</span></div></div><div class="c-body minimal-c-body"><div class="c-stage"><p class="stage-no">01 · ${bilingual("Choose", "选择", "inline-copy")}</p><h3>${bilingual("Choose a mode", "选择游玩方式")}</h3>${gameplayCopy()}<div class="c-options">${cOptions()}</div></div></div></div>`;
+        };
+        const minimalScreens = () => {
+          const [modeEn, modeZh] = modeLabel();
+          const [recordEn, recordZh] = modeLabel(state.recordTab);
+          return [
+            screenWrap("modes", `${minimalNav("modes")}<div class="screen-inner"><div class="screen-header"><div><p class="eyebrow">Modes / 游玩方式</p><h3>${bilingual("Choose a mode", "选择游玩方式")}</h3></div></div><div class="mode-list">${modeOptions()}</div></div>`),
+            screenWrap("setup", `${minimalNav("settings")}<div class="screen-inner"><div class="screen-header"><div><p class="eyebrow">Setup / 设置</p><h3>${bilingual("Setup", "设置")}</h3></div></div><div class="setup-card-grid minimal-one-col"><div class="setup-controls"><div class="control-row"><span><strong>${bilingual("Players", "玩家")}</strong></span><span class="keycap">${mode() === "shared" ? "2–4" : mode() === "twoD" ? "1–2" : "1"}</span></div><div class="control-row"><span><strong>${bilingual("Controls", "控制")}</strong></span><span class="keycap">Space</span></div><div class="control-row"><span><strong>${bilingual("Sound", "声音")}</strong></span><button type="button" class="toggle" aria-label="Sound on"></button></div></div></div><div class="screen-actions"><button type="button" class="quiet-action" data-screen="modes">${bilingual("Back", "返回", "inline-copy")}</button><button type="button" class="primary-action" data-screen="play">${bilingual("Start", "开始", "inline-copy")} <span>→</span></button></div></div>`),
+            screenWrap("play", `${minimalNav("play")}<div class="screen-inner"><div class="screen-header"><div><p class="eyebrow">${bilingual(modeEn, modeZh, "inline-copy")}</p><h3>${bilingual("Fishing Session", "钓鱼会话")}</h3></div></div><div class="play-grid"><div class="play-board"><div class="play-head"><strong>${bilingual(modeEn, modeZh, "inline-copy")}</strong><span>08:24</span></div><div class="water-lanes"><div class="lane"><span class="lane-label"><span>P1</span><span>+120</span></span></div><div class="lane"><span class="lane-label"><span>P2</span><span>+90</span></span></div><div class="lane"><span class="lane-label"><span>P3</span><span>+75</span></span></div></div><div class="play-meter"><div class="meter-line"><span>${bilingual("Session score", "会话得分", "inline-copy")}</span><strong>285</strong></div><div class="meter"><i></i></div></div></div><aside class="play-side"><div class="stat"><span>${bilingual("Caught", "捕获数", "inline-copy")}</span><strong>12</strong></div><div class="stat"><span>${bilingual("Escaped", "逃脱数", "inline-copy")}</span><strong>3</strong></div><div class="stat"><span>${bilingual("Best streak", "最佳连击", "inline-copy")}</span><strong>5</strong></div><button type="button" class="secondary-action" data-screen="summary">${bilingual("End session", "结束会话", "inline-copy")} <span>→</span></button><button type="button" class="quiet-action" data-screen="settings">${bilingual("Pause", "暂停", "inline-copy")}</button></aside></div></div>`),
+            screenWrap("summary", `${minimalNav("summary")}<div class="screen-inner"><div class="screen-header"><div><p class="eyebrow">${bilingual(modeEn, modeZh, "inline-copy")}</p><h3>${bilingual("Session Summary", "会话总结")}</h3></div></div><div class="summary-layout"><div class="summary-hero"><span class="mode-chip">${bilingual(modeEn, modeZh, "inline-copy")}</span><div class="summary-stats"><div class="summary-stat"><span>${bilingual("Duration", "时长", "inline-copy")}</span><strong>08:24</strong></div><div class="summary-stat"><span>${bilingual("Session score", "会话得分", "inline-copy")}</span><strong>285</strong></div><div class="summary-stat"><span>${bilingual("Caught", "捕获数", "inline-copy")}</span><strong>12</strong></div><div class="summary-stat"><span>${bilingual("Escaped", "逃脱数", "inline-copy")}</span><strong>3</strong></div><div class="summary-stat"><span>${bilingual("Best streak", "最佳连击", "inline-copy")}</span><strong>5</strong></div></div></div><aside class="summary-side"><button type="button" class="primary-action" data-screen="setup">${bilingual("Fish again", "再次游玩", "inline-copy")} <span>→</span></button><button type="button" class="secondary-action" data-screen="records">${bilingual("Records", "记录", "inline-copy")} <span>→</span></button><button type="button" class="quiet-action" data-screen="home">${bilingual("Home", "首页", "inline-copy")}</button></aside></div></div>`),
+            screenWrap("records", `${minimalNav("records")}<div class="screen-inner"><div class="screen-header"><div><p class="eyebrow">Records / 记录</p><h3>${bilingual("Records", "记录")}</h3></div></div><div class="record-tabs">${[["solo", "Solo Fishing", "单人钓鱼"], ["shared", "Shared-Screen Fishing", "同屏钓鱼"], ["twoD", "2D Fishing", "2D 钓鱼"]].map(([key, en, zh]) => `<button type="button" class="record-tab ${state.recordTab === key ? "is-selected" : ""}" data-record-tab="${key}">${bilingual(en, zh, "inline-copy")}</button>`).join("")}</div><div class="record-layout minimal-one-col"><div class="record-main"><h4>${bilingual(recordEn, recordZh, "inline-copy")}</h4><div class="record-values"><div class="record-value"><span>${bilingual("Lifetime score", "累计得分", "inline-copy")}</span><strong>2,480</strong></div><div class="record-value"><span>${bilingual("Best score", "最佳得分", "inline-copy")}</span><strong>385</strong></div><div class="record-value"><span>${bilingual("Sessions", "会话数", "inline-copy")}</span><strong>18</strong></div><div class="record-value"><span>${bilingual("Latest", "最近一次", "inline-copy")}</span><strong>285</strong></div></div></div></div></div>`),
+            screenWrap("settings", `${minimalNav("settings")}<div class="screen-inner"><div class="screen-header"><div><p class="eyebrow">Settings / 设置</p><h3>${bilingual("Settings", "设置")}</h3></div></div><div class="setup-card-grid minimal-one-col"><div class="setup-controls"><div class="control-row"><span><strong>${bilingual("Language", "语言")}</strong></span><span class="keycap">EN / 中文</span></div><div class="control-row"><span><strong>${bilingual("Music", "音乐")}</strong></span><button type="button" class="toggle" aria-label="Music on"></button></div><div class="control-row"><span><strong>${bilingual("Touch hints", "触控提示")}</strong></span><button type="button" class="toggle" aria-label="Touch hints on"></button></div></div></div><div class="screen-actions"><button type="button" class="primary-action" data-screen="home">${bilingual("Home", "首页", "inline-copy")} <span>→</span></button></div></div>`),
+          ];
+        };
+
         const render = () => {
-          document.body.dataset.language = document.body.dataset.language || "both";
+          document.body.dataset.language = document.body.dataset.language || "en";
           document.querySelectorAll(".variant").forEach((element) => element.classList.toggle("is-active", element.dataset.variant === state.variant));
           const frame = document.querySelector(`.variant[data-variant="${state.variant}"] .app-frame`);
-          const pages = state.variant === "A"
-            ? [screenWrap("home", aHome())]
-            : state.variant === "B"
-              ? [screenWrap("home", bHome())]
-              : [screenWrap("home", cHome())];
-          const persistentNav = state.variant === "B" && state.screen === "home" ? "" : nav(state.screen);
-          frame.innerHTML = persistentNav + pages.join("") + commonScreens(state.variant).join("");
+          const pages = [screenWrap("home", minimalHome(state.variant))];
+          frame.innerHTML = pages.join("") + minimalScreens().join("");
           frame.querySelectorAll("[data-screen]").forEach((element) => element.addEventListener("click", () => {
             state.screen = element.dataset.screen;
             render();
