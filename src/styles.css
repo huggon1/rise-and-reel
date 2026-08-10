@@ -38,6 +38,8 @@ h1, h2, p { margin: 0; }
 .rail-note { margin-top: auto; padding: 18px 10px 4px; border-top: 1px solid var(--line); }
 .rail-note span, .eyebrow { color: var(--mint); font: 700 10px DM Mono, monospace; letter-spacing: .14em; }
 .rail-note p { margin-top: 8px; color: var(--muted); font-size: 11px; line-height: 1.55; }
+.rail-note a { display: inline-block; margin-top: 12px; color: var(--lime); font-size: 10px; text-decoration: none; }
+.rail-note a:hover { text-decoration: underline; }
 
 .tide-main { min-width: 0; background: linear-gradient(135deg, rgba(114,221,202,.05), transparent 34%), var(--panel); }
 .topline { display: flex; min-height: 70px; align-items: center; justify-content: space-between; gap: 20px; padding: 14px 28px; border-bottom: 1px solid var(--line); background: rgba(8,24,27,.34); }

@@ -17,7 +17,7 @@ describe("Rise & Reel preferences", () => {
     expect(storage.values.has(RISE_AND_REEL_PREFERENCES_KEY)).toBe(true);
   });
 
-  it("cleans only known Reel Rivals keys", () => {
+  it("cleans only the two known legacy keys", () => {
     const storage = new MemoryStorage();
     storage.values.set("reel-rivals.records", "old");
     storage.values.set("reel-rivals.preferences", "old");

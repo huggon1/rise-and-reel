@@ -28,7 +28,7 @@ export interface FishingSession {
 
 export const createFishingSession = (): FishingSession => ({
   phase: "setup",
-  countdownSeconds: GAME_CONFIG.match.countdownSeconds,
+  countdownSeconds: GAME_CONFIG.session.countdownSeconds,
   activeSeconds: 0,
   hasStartedActivePlay: false,
   pauseReason: null,

@@ -1,19 +1,15 @@
 # Privacy
 
-Reel Rivals does not require an account and does not send match history to an application backend.
+Rise & Reel does not require an account and has no application backend.
 
-## Data stored in your browser
+## Browser-local data
 
-Timed-match history, personal-best summaries, and recent control preferences are stored in your browser's local storage. This data stays on that browser unless you clear it through the game or browser settings.
+The game stores the selected language, Solo control key, completed Solo session history, personal-best score, and lifetime score in the current browser's local storage. This data is not synchronized between devices and can be removed through the browser's site-data settings.
 
 ## Hosting data
 
-The official public site is served by Cloudflare. Like other web hosts, Cloudflare may process standard request information needed to deliver and protect the site, such as IP addresses, request paths, timestamps, and user-agent information. Refer to Cloudflare's privacy policy for its processing practices.
+The public site is served through Cloudflare. Cloudflare may process standard request information required to deliver and protect the site, including IP addresses, request paths, timestamps, and user-agent information. See Cloudflare's privacy policy for details.
 
 ## Analytics and advertising
 
-The first public version does not include product analytics, advertising trackers, or third-party web fonts.
-
-## Clearing game data
-
-Use the history screen's clear controls to remove single-player records, multiplayer records, or all match records. Browser storage can also be cleared through browser settings.
+Version 0.1.0 contains no product analytics, advertising trackers, accounts, third-party web fonts, or background audio.

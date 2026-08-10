@@ -7,13 +7,13 @@ const steadyRandom = () => 0.5;
 
 describe("Solo Fishing", () => {
   it("starts after preparation and continues without a time limit", () => {
-    let game = createSoloGame("KeyF", steadyRandom);
+    let game = createSoloGame(steadyRandom);
     expect(game.session.phase).toBe("countdown");
 
     game = advanceSoloGame(
       game,
       createLogicalInput([playerControlId(1)]),
-      GAME_CONFIG.match.countdownSeconds + 0.25,
+      GAME_CONFIG.session.countdownSeconds + 0.25,
       steadyRandom,
     );
     expect(game.session.phase).toBe("active");

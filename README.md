@@ -1,70 +1,61 @@
 # Rise & Reel
 
-Rise & Reel is a browser-local Solo Fishing game. Bind one desktop key, wait through a short preparation count, then fish without a time limit. Hold the key to lift the catch zone and release it to let gravity pull the zone down.
+[简体中文](README.zh-CN.md)
 
-The current public candidate includes:
+Rise & Reel is a browser-local desktop Solo Fishing game. Choose one keyboard key, wait through a short preparation countdown, then fish for as long as you like. Hold the key to lift the catch zone and release it to let the zone fall.
 
-- an English and Chinese Tide Map interface;
-- configurable one-key Solo Fishing;
-- unlimited sessions with explicit pause, resume, and confirmed ending;
-- a closing summary with active time, score, catches, escapes, and best streak;
-- browser-local history for the latest 100 completed sessions;
-- personal-best and lifetime scores that remain correct when old history is pruned.
+![Rise & Reel Solo Fishing home screen](docs/screenshots/solo-home.jpg)
 
-Shared-Screen Fishing, 2D Fishing, mobile touch, session recovery, and background music are not part of this candidate.
+## Version 0.1.0 scope
 
-## Local development
+- English and Simplified Chinese interface.
+- One configurable keyboard control.
+- Unlimited Solo sessions with pause, resume, restart confirmation, and confirmed ending.
+- Session summaries with active time, score, catches, escapes, and best streak.
+- Browser-local history for the latest 100 completed sessions.
+- Personal-best and lifetime scores that remain correct when older history is pruned.
+
+This release is desktop and keyboard only. It does not include multiplayer, 2D fishing, mobile touch controls, cloud sync, accounts, analytics, session recovery, or background music.
+
+## Run locally
 
 Node.js 22 or newer is required.
 
 ```bash
-nvm use
 npm install
 npm run dev
 ```
 
-The development URL is usually `http://localhost:5173`.
+The development server normally opens at `http://localhost:5173`.
 
-## Verification
+## Verify the candidate
 
 ```bash
-npm test
-npm run test:e2e
-npm run build
-npm run deploy:cloudflare:dry-run
+npm run verify
 ```
 
-The Playwright seam currently runs the desktop Solo critical path in Chromium. The release-candidate work expands this to the full browser matrix.
+This runs the unit tests, the Solo browser flow in Chromium, Firefox, and WebKit, the production build, and a Cloudflare deployment dry run.
 
 ## Browser-local data
 
-Rise & Reel has no account, backend, or cloud synchronization. It stores data under versioned keys in the current browser:
+Rise & Reel has no account, backend, or cloud synchronization. Preferences and completed Solo sessions stay in the current browser under versioned storage keys:
 
 - `rise-and-reel.v1.preferences`
 - `rise-and-reel.v1.solo-history`
 
-On first load it removes only the known legacy keys `reel-rivals.preferences` and `reel-rivals.records`. It does not migrate their values or touch unrelated browser storage.
+On first load, the app removes only the known legacy keys `reel-rivals.preferences` and `reel-rivals.records`. It does not migrate their values or touch unrelated browser storage. See the [privacy note](PRIVACY.md) for details.
 
-## Architecture
+## Deployment candidate
 
-- `src/App.tsx` owns Tide Map navigation, translation, the keyboard adapter, and browser event orchestration.
-- `src/game/config.ts` centralizes physics, catch rates, round timing, and fish tuning.
-- `src/game/engine.ts` contains the UI-independent one-dimensional fishing simulation.
-- `src/game/session.ts` defines preparation, active time, pauses, confirmed Group Exit, and summary eligibility.
-- `src/game/input.ts` defines the logical held/released controls consumed by gameplay.
-- `src/solo/game.ts` composes the Solo session and one-dimensional engine without React or storage.
-- `src/solo/preferences.ts` validates and stores language and Solo key preferences.
-- `src/solo/storage.ts` is the versioned Solo history repository and owns retention, personal-best, lifetime-score, and idempotent-save semantics.
-- `e2e/solo.spec.ts` exercises the public Solo flow at the browser boundary.
+The production build is a static single-page app configured for Cloudflare Workers Static Assets. The candidate declares:
 
-Older multiplayer and timed modules remain in the repository temporarily, but they are not imported by the public application.
+- SPA fallback routing;
+- the canonical URL `https://riseandreel.huggon1.com/`;
+- Cloudflare preview URLs;
+- the default `workers.dev` fallback.
 
-## Deployment
+The repository contains no Worker script, database, analytics binding, or secret. Building this candidate does not deploy it, switch the domain, create a tag, or publish a GitHub Release.
 
-The site uses Cloudflare Workers Static Assets with SPA fallback. There is no Worker script, database, analytics binding, or secret in the repository. `npm run build` produces a portable `dist` directory that can be served by any static host with SPA fallback.
+## License
 
-## Project policies
-
-- [Contributing](CONTRIBUTING.md)
-- [Privacy](PRIVACY.md)
-- [MIT License](LICENSE)
+Source code is available under the [MIT License](LICENSE). Version 0.1.0 contains no background music or separately licensed audio assets.

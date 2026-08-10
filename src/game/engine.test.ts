@@ -7,7 +7,6 @@ const steadyRandom = () => 0.5;
 const player = {
   id: 1,
   name: "Player 1",
-  keyCode: "KeyF",
 };
 
 const makeSteadyLane = (): LaneState => {
