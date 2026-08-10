@@ -1,16 +1,16 @@
 import { GAME_CONFIG } from "./config";
 import { advanceLane, createLane, type RandomSource } from "./engine";
+import {
+  isControlHeld,
+  playerControlId,
+  type LogicalInput,
+} from "./input";
 import type {
   GameMode,
   MatchState,
   PlayerDefinition,
   PlayerResult,
 } from "./types";
-
-type PressedInput = ReadonlySet<string> | ((keyCode: string) => boolean);
-
-const isPressed = (input: PressedInput, keyCode: string) =>
-  typeof input === "function" ? input(keyCode) : input.has(keyCode);
 
 export const createMatch = (
   mode: GameMode,
@@ -29,7 +29,7 @@ export const createMatch = (
 
 const advancePlaying = (
   current: MatchState,
-  input: PressedInput,
+  input: LogicalInput,
   elapsedSeconds: number,
   random: RandomSource,
 ) => {
@@ -55,7 +55,12 @@ const advancePlaying = (
           ? null
           : Math.max(0, match.remainingSeconds - step),
       lanes: match.lanes.map((lane) =>
-        advanceLane(lane, isPressed(input, lane.keyCode), step, random),
+        advanceLane(
+          lane,
+          isControlHeld(input, playerControlId(lane.id)),
+          step,
+          random,
+        ),
       ),
     };
     unprocessed -= step;
@@ -70,7 +75,7 @@ const advancePlaying = (
 
 export const advanceMatch = (
   current: MatchState,
-  input: PressedInput,
+  input: LogicalInput,
   elapsedSeconds: number,
   random: RandomSource = Math.random,
 ): MatchState => {

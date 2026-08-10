@@ -5,12 +5,18 @@ import {
   createCooperativeGame,
   isFishInsideCooperativeZone,
 } from "./cooperativeEngine";
+import { axisControlId, createLogicalInput } from "./input";
 import type {
   CooperativePlayerDefinition,
   CooperativeState,
 } from "./types";
 
 const steadyRandom = () => 0.5;
+const controls = (xHeld: boolean, yHeld: boolean) =>
+  createLogicalInput([
+    ...(xHeld ? [axisControlId("x")] : []),
+    ...(yHeld ? [axisControlId("y")] : []),
+  ]);
 const players: [
   CooperativePlayerDefinition,
   CooperativePlayerDefinition,
@@ -57,13 +63,13 @@ describe("cooperative controls", () => {
     for (let frame = 0; frame < 12; frame += 1) {
       held = advanceCooperativeGame(
         held,
-        { xPressed: true, yPressed: true },
+        controls(true, true),
         0.04,
         steadyRandom,
       );
       released = advanceCooperativeGame(
         released,
-        { xPressed: false, yPressed: false },
+        controls(false, false),
         0.04,
         steadyRandom,
       );
@@ -80,7 +86,7 @@ describe("cooperative controls", () => {
     for (let frame = 0; frame < 300; frame += 1) {
       game = advanceCooperativeGame(
         game,
-        { xPressed: true, yPressed: true },
+        controls(true, true),
         0.04,
         steadyRandom,
       );
@@ -88,7 +94,7 @@ describe("cooperative controls", () => {
     for (let frame = 0; frame < 300; frame += 1) {
       game = advanceCooperativeGame(
         game,
-        { xPressed: false, yPressed: false },
+        controls(false, false),
         0.04,
         steadyRandom,
       );
@@ -136,7 +142,7 @@ describe("cooperative round lifecycle", () => {
       };
       game = advanceCooperativeGame(
         game,
-        { xPressed: true, yPressed: false },
+        controls(true, false),
         0.04,
         steadyRandom,
       );
@@ -172,7 +178,7 @@ describe("cooperative round lifecycle", () => {
       };
       game = advanceCooperativeGame(
         game,
-        { xPressed: false, yPressed: true },
+        controls(false, true),
         0.04,
         steadyRandom,
       );
@@ -193,7 +199,7 @@ describe("cooperative round lifecycle", () => {
         catches: 3,
         streak: 2,
       },
-      { xPressed: false, yPressed: false },
+      controls(false, false),
       0.04,
       steadyRandom,
     );
