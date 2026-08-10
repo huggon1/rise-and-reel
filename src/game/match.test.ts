@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { GAME_CONFIG } from "./config";
+import { createLogicalInput, playerControlId } from "./input";
 import {
   advanceMatch,
   createMatch,
@@ -14,13 +15,13 @@ const players: PlayerDefinition[] = [
   { id: 1, name: "Player 1", keyCode: "KeyF" },
   { id: 2, name: "Player 2", keyCode: "KeyJ" },
 ];
-const noKeys = new Set<string>();
+const noInput = createLogicalInput();
 
 describe("timed matches", () => {
   it("counts down before advancing the lanes and match clock", () => {
     let match = createMatch("timed", players, steadyRandom);
 
-    match = advanceMatch(match, noKeys, 2, steadyRandom);
+    match = advanceMatch(match, noInput, 2, steadyRandom);
     expect(match.phase).toBe("countdown");
     expect(match.countdownSeconds).toBe(1);
     expect(match.remainingSeconds).toBe(
@@ -28,7 +29,7 @@ describe("timed matches", () => {
     );
     expect(match.lanes[0].activeSeconds).toBe(0);
 
-    match = advanceMatch(match, noKeys, 1.25, steadyRandom);
+    match = advanceMatch(match, noInput, 1.25, steadyRandom);
     expect(match.phase).toBe("playing");
     expect(match.countdownSeconds).toBe(0);
     expect(match.remainingSeconds).toBeCloseTo(59.75, 8);
@@ -37,23 +38,28 @@ describe("timed matches", () => {
 
   it("finishes once after exactly sixty seconds of active play", () => {
     let match = createMatch("timed", players, steadyRandom);
-    match = advanceMatch(match, noKeys, 63, steadyRandom);
+    match = advanceMatch(match, noInput, 63, steadyRandom);
 
     expect(match.phase).toBe("finished");
     expect(match.remainingSeconds).toBe(0);
     expect(match.lanes[0].activeSeconds).toBeCloseTo(60, 6);
 
-    const frozen = advanceMatch(match, new Set(["KeyF"]), 10, steadyRandom);
+    const frozen = advanceMatch(
+      match,
+      createLogicalInput([playerControlId(1)]),
+      10,
+      steadyRandom,
+    );
     expect(frozen).toBe(match);
   });
 
   it("produces the same timer result for one large or many small updates", () => {
     const initial = createMatch("timed", players, steadyRandom);
-    const oneUpdate = advanceMatch(initial, noKeys, 4.6, steadyRandom);
+    const oneUpdate = advanceMatch(initial, noInput, 4.6, steadyRandom);
     let manyUpdates = initial;
 
     for (let index = 0; index < 46; index += 1) {
-      manyUpdates = advanceMatch(manyUpdates, noKeys, 0.1, steadyRandom);
+      manyUpdates = advanceMatch(manyUpdates, noInput, 0.1, steadyRandom);
     }
 
     expect(oneUpdate.phase).toBe("playing");
@@ -73,7 +79,7 @@ describe("timed matches", () => {
     const pausedCountdown = pauseMatch(countdown);
     const unchangedCountdown = advanceMatch(
       pausedCountdown,
-      noKeys,
+      noInput,
       20,
       steadyRandom,
     );
@@ -81,11 +87,11 @@ describe("timed matches", () => {
     expect(unchangedCountdown).toBe(pausedCountdown);
     expect(resumeMatch(unchangedCountdown).phase).toBe("countdown");
 
-    const playing = advanceMatch(countdown, noKeys, 3, steadyRandom);
+    const playing = advanceMatch(countdown, noInput, 3, steadyRandom);
     const pausedPlaying = pauseMatch(playing);
     const unchangedPlaying = advanceMatch(
       pausedPlaying,
-      noKeys,
+      noInput,
       20,
       steadyRandom,
     );
@@ -102,10 +108,28 @@ describe("practice matches", () => {
     expect(match.phase).toBe("playing");
     expect(match.remainingSeconds).toBeNull();
 
-    match = advanceMatch(match, noKeys, 10, steadyRandom);
+    match = advanceMatch(match, noInput, 10, steadyRandom);
     expect(match.phase).toBe("playing");
     expect(match.remainingSeconds).toBeNull();
     expect(match.lanes[0].activeSeconds).toBeCloseTo(10, 8);
+  });
+});
+
+describe("match logical input", () => {
+  it("drives a player lane by logical control rather than its keyboard binding", () => {
+    const initial = createMatch("practice", players, steadyRandom);
+    const released = advanceMatch(initial, noInput, 0.04, steadyRandom);
+    const held = advanceMatch(
+      initial,
+      createLogicalInput([playerControlId(1)]),
+      0.04,
+      steadyRandom,
+    );
+
+    expect(held.lanes[0].barVelocity).toBeLessThan(
+      released.lanes[0].barVelocity,
+    );
+    expect(held.lanes[1].barVelocity).toBe(released.lanes[1].barVelocity);
   });
 });
 

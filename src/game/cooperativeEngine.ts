@@ -1,15 +1,15 @@
 import { GAME_CONFIG } from "./config";
 import { chooseFish, type RandomSource } from "./engine";
+import {
+  axisControlId,
+  isControlHeld,
+  type LogicalInput,
+} from "./input";
 import type {
   CooperativePlayerDefinition,
   CooperativeState,
   FishDefinition,
 } from "./types";
-
-export interface CooperativeInput {
-  xPressed: boolean;
-  yPressed: boolean;
-}
 
 const clamp = (value: number, minimum: number, maximum: number) =>
   Math.min(maximum, Math.max(minimum, value));
@@ -91,7 +91,7 @@ const updateBoundedAxis = (
 
 const updateZone = (
   state: CooperativeState,
-  input: CooperativeInput,
+  input: LogicalInput,
   delta: number,
 ) => {
   const horizontal = GAME_CONFIG.cooperative.horizontal;
@@ -99,7 +99,7 @@ const updateZone = (
   [state.zoneX, state.zoneVelocityX] = updateBoundedAxis(
     state.zoneX,
     state.zoneVelocityX,
-    input.xPressed
+    isControlHeld(input, axisControlId("x"))
       ? horizontal.heldAcceleration
       : horizontal.releasedAcceleration,
     horizontal.velocityDamping,
@@ -114,7 +114,9 @@ const updateZone = (
   [state.zoneY, state.zoneVelocityY] = updateBoundedAxis(
     state.zoneY,
     state.zoneVelocityY,
-    input.yPressed ? bar.gravity - bar.liftAcceleration : bar.gravity,
+    isControlHeld(input, axisControlId("y"))
+      ? bar.gravity - bar.liftAcceleration
+      : bar.gravity,
     bar.velocityDamping,
     Math.max(bar.maxRiseSpeed, bar.maxFallSpeed),
     zone.height / 2,
@@ -212,7 +214,7 @@ export const isFishInsideCooperativeZone = (state: CooperativeState) => {
 
 export const advanceCooperativeGame = (
   current: CooperativeState,
-  input: CooperativeInput,
+  input: LogicalInput,
   elapsedSeconds: number,
   random: RandomSource = Math.random,
 ): CooperativeState => {

@@ -13,6 +13,12 @@ import {
 } from "./game/cooperativeEngine";
 import { isFishOverlappingBar } from "./game/engine";
 import {
+  axisControlId,
+  createLogicalInput,
+  playerControlId,
+  type LogicalControlId,
+} from "./game/input";
+import {
   advanceMatch,
   createMatch,
   getMatchResults,
@@ -72,6 +78,17 @@ const initialRivalsBindings = (count: number) =>
 
 const playersFromMatch = (match: MatchState): PlayerDefinition[] =>
   match.lanes.map(({ id, name, keyCode }) => ({ id, name, keyCode }));
+
+const createKeyboardInput = <Player extends { keyCode: string }>(
+  players: readonly Player[],
+  controlIdFor: (player: Player) => LogicalControlId,
+  pressedKeys: ReadonlySet<string>,
+) =>
+  createLogicalInput(
+    players
+      .filter((player) => pressedKeys.has(player.keyCode))
+      .map(controlIdFor),
+  );
 
 const formatPercent = (rate: number) => `${Math.round(rate * 100)}%`;
 
@@ -537,25 +554,28 @@ export default function App() {
           if (!current) {
             return current;
           }
-          const xPlayer = current.players.find((player) => player.axis === "x");
-          const yPlayer = current.players.find((player) => player.axis === "y");
           return advanceCooperativeGame(
             current,
-            {
-              xPressed: Boolean(
-                xPlayer && pressedKeys.current.has(xPlayer.keyCode),
-              ),
-              yPressed: Boolean(
-                yPlayer && pressedKeys.current.has(yPlayer.keyCode),
-              ),
-            },
+            createKeyboardInput(
+              current.players,
+              (player) => axisControlId(player.axis),
+              pressedKeys.current,
+            ),
             elapsed,
           );
         });
       } else {
         setMatch((current) =>
           current
-            ? advanceMatch(current, pressedKeys.current, elapsed)
+            ? advanceMatch(
+                current,
+                createKeyboardInput(
+                  current.lanes,
+                  (lane) => playerControlId(lane.id),
+                  pressedKeys.current,
+                ),
+                elapsed,
+              )
             : current,
         );
       }
