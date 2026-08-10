@@ -97,7 +97,9 @@ No Cloudflare credentials or service identifiers are stored in the repository.
 - `src/App.tsx` owns screen navigation, mode setup, keyboard bindings, and the animation loop.
 - `src/game/config.ts` centralizes catch-bar physics, catch rates, round timing, cooperative controls, and fish tuning.
 - `src/game/engine.ts` contains the UI-independent rivals simulation and round lifecycle.
-- `src/game/match.ts` contains timed/practice match phases, countdowns, pausing, finishing, and rivals result calculation.
+- `src/game/match.ts` contains the existing timed/practice match phases and rivals result calculation.
+- `src/game/session.ts` defines the UI-independent Fishing Session lifecycle, including preparation, active time, pauses, Group Exit, and summary eligibility.
+- `src/game/input.ts` defines held/released logical controls shared by keyboard adapters and future input sources.
 - `src/game/cooperativeEngine.ts` contains the UI-independent two-axis cooperative simulation and shared round lifecycle.
 - `src/game/types.ts` defines the rivals, match, and cooperative state contracts.
 - `src/records/repository.ts` defines the small storage interface used by the UI.

@@ -1,4 +1,6 @@
-export type LogicalControlId = string;
+export type LogicalControlId =
+  | `angler:${number}`
+  | `axis:${"x" | "y"}`;
 
 export const playerControlId = (playerId: number): LogicalControlId =>
   `angler:${playerId}`;
