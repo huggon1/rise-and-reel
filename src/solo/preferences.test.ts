@@ -5,21 +5,7 @@ import {
   RISE_AND_REEL_PREFERENCES_KEY,
   savePreferences,
 } from "./preferences";
-
-class MemoryStorage {
-  values = new Map<string, string>();
-  removed: string[] = [];
-  getItem(key: string) {
-    return this.values.get(key) ?? null;
-  }
-  setItem(key: string, value: string) {
-    this.values.set(key, value);
-  }
-  removeItem(key: string) {
-    this.removed.push(key);
-    this.values.delete(key);
-  }
-}
+import { MemoryStorage } from "./testStorage";
 
 describe("Rise & Reel preferences", () => {
   it("defaults to English and persists language and Solo binding", () => {
