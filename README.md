@@ -1,23 +1,52 @@
-# Rise & Reel
+<div align="center">
 
-[简体中文](README.zh-CN.md)
+# 🎣 Rise & Reel
 
-Rise & Reel is a browser-local desktop Solo Fishing game. Choose one keyboard key, wait through a short preparation countdown, then fish for as long as you like. Hold the key to lift the catch zone and release it to let the zone fall.
+### One key. No clock. Your tide, your pace.
 
-![Rise & Reel Solo Fishing home screen](docs/screenshots/solo-home.jpg)
+A calm desktop fishing game about finding the rhythm, holding the line, and landing one more catch.
 
-## Version 0.1.0 scope
+[简体中文](README.zh-CN.md) · [▶️ Watch the gameplay demo](docs/media/rise-and-reel-gameplay.mp4)
 
-- English and Simplified Chinese interface.
-- One configurable keyboard control.
-- Unlimited Solo sessions with pause, resume, restart confirmation, and confirmed ending.
-- Session summaries with active time, score, catches, escapes, and best streak.
-- Browser-local history for the latest 100 completed sessions.
-- Personal-best and lifetime scores that remain correct when older history is pruned.
+[![Watch Rise & Reel gameplay](public/social-card.png)](docs/media/rise-and-reel-gameplay.mp4)
 
-This release is desktop and keyboard only. It does not include multiplayer, 2D fishing, mobile touch controls, cloud sync, accounts, analytics, session recovery, or background music.
+**Click the image to watch an 18-second gameplay session.**
 
-## Run locally
+</div>
+
+## 🌊 Settle in and keep the line moving
+
+Rise & Reel turns fishing into a simple, satisfying rhythm:
+
+- **Hold your chosen key** to lift the catch zone.
+- **Release it** to let the zone fall.
+- **Stay with the fish** long enough to reel it in.
+- **Keep fishing without a timer**, then end the session whenever you are ready.
+
+No frantic countdown. No account setup. Just you, the water, and the next catch.
+
+## ✨ What is inside v0.1.0
+
+- 🎮 A complete desktop Solo Fishing session.
+- ⌨️ One configurable keyboard control.
+- 🌍 English and Simplified Chinese interfaces.
+- ⏸️ Pause, resume, restart confirmation, and a deliberate session ending.
+- 📊 Session summaries with active time, score, catches, escapes, and best streak.
+- 🏆 Personal bests, lifetime score, and the latest 100 sessions saved in your browser.
+- 🧪 Automated coverage in Chromium, Firefox, and WebKit.
+
+Version 0.1.0 is designed for desktop keyboard play. Multiplayer, 2D fishing, mobile touch controls, cloud sync, accounts, session recovery, and background music are outside this release.
+
+## 🕹️ Controls
+
+| Action | Control |
+| --- | --- |
+| Raise the catch zone | Hold your selected key |
+| Lower the catch zone | Release the key |
+| Pause or continue | Use the on-screen control |
+| Finish a session | Choose **End session** and confirm |
+
+## 🚀 Run it locally
 
 Node.js 22 or newer is required.
 
@@ -26,36 +55,20 @@ npm install
 npm run dev
 ```
 
-The development server normally opens at `http://localhost:5173`.
+Open `http://localhost:5173`, choose **Solo Fishing**, bind a key, and cast off.
 
-## Verify the candidate
+## ✅ Verify the build
 
 ```bash
-npm run verify
+npm test
+npm run test:e2e
+npm run build
 ```
 
-This runs the unit tests, the Solo browser flow in Chromium, Firefox, and WebKit, the production build, and a Cloudflare deployment dry run.
+## 🧰 Built with
 
-## Browser-local data
+React 19 · TypeScript · Vite · Vitest · Playwright
 
-Rise & Reel has no account, backend, or cloud synchronization. Preferences and completed Solo sessions stay in the current browser under versioned storage keys:
+## 📜 License
 
-- `rise-and-reel.v1.preferences`
-- `rise-and-reel.v1.solo-history`
-
-On first load, the app removes only the known legacy keys `reel-rivals.preferences` and `reel-rivals.records`. It does not migrate their values or touch unrelated browser storage. See the [privacy note](PRIVACY.md) for details.
-
-## Deployment candidate
-
-The production build is a static single-page app configured for Cloudflare Workers Static Assets. The candidate declares:
-
-- SPA fallback routing;
-- the canonical URL `https://riseandreel.huggon1.com/`;
-- Cloudflare preview URLs;
-- the default `workers.dev` fallback.
-
-The repository contains no Worker script, database, analytics binding, or secret. Building this candidate does not deploy it, switch the domain, create a tag, or publish a GitHub Release.
-
-## License
-
-Source code is available under the [MIT License](LICENSE). Version 0.1.0 contains no background music or separately licensed audio assets.
+Rise & Reel is available under the [MIT License](LICENSE). Version 0.1.0 contains no background music or separately licensed audio assets.
