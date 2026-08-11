@@ -6,13 +6,17 @@
 
 一款轻松的桌面端钓鱼游戏：找到节奏，稳住钓线，再收获一条鱼。
 
-[English](README.md) · [▶️ 查看游玩演示](docs/media/rise-and-reel-gameplay.mp4)
+[English](README.md)
 
-[![查看 Rise & Reel 游玩演示](public/social-card.png)](docs/media/rise-and-reel-gameplay.mp4)
-
-**点击图片，观看 18 秒完整游玩演示。**
+<img src="docs/media/rise-and-reel-key-art.png" alt="Rise & Reel 像素风宣传图：夕阳下，一名钓手向充满鱼群的湖泊抛线" width="100%">
 
 </div>
+
+## 🎬 游玩演示
+
+<video src="./docs/media/rise-and-reel-gameplay.mp4" controls preload="metadata" poster="./docs/media/rise-and-reel-key-art.png" width="100%">
+  <a href="./docs/media/rise-and-reel-gameplay.mp4">观看 18 秒完整游玩演示。</a>
+</video>
 
 ## 🌊 坐稳，抛线，跟上鱼的节奏
 

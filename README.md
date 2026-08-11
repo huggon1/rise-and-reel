@@ -6,13 +6,17 @@
 
 A calm desktop fishing game about finding the rhythm, holding the line, and landing one more catch.
 
-[简体中文](README.zh-CN.md) · [▶️ Watch the gameplay demo](docs/media/rise-and-reel-gameplay.mp4)
+[简体中文](README.zh-CN.md)
 
-[![Watch Rise & Reel gameplay](public/social-card.png)](docs/media/rise-and-reel-gameplay.mp4)
-
-**Click the image to watch an 18-second gameplay session.**
+<img src="docs/media/rise-and-reel-key-art.png" alt="Rise & Reel pixel-art key art with a solo angler casting into a lively lake at sunset" width="100%">
 
 </div>
+
+## 🎬 Gameplay demo
+
+<video src="./docs/media/rise-and-reel-gameplay.mp4" controls preload="metadata" poster="./docs/media/rise-and-reel-key-art.png" width="100%">
+  <a href="./docs/media/rise-and-reel-gameplay.mp4">Watch the 18-second gameplay demo.</a>
+</video>
 
 ## 🌊 Settle in and keep the line moving
 
