@@ -14,9 +14,7 @@ A calm desktop fishing game about finding the rhythm, holding the line, and land
 
 ## 🎬 Gameplay demo
 
-<video src="./docs/media/rise-and-reel-gameplay.mp4" controls preload="metadata" poster="./docs/media/rise-and-reel-key-art.png" width="100%">
-  <a href="./docs/media/rise-and-reel-gameplay.mp4">Watch the 18-second gameplay demo.</a>
-</video>
+https://github.com/user-attachments/assets/f779a675-283b-431c-a957-fca98b6c9b61
 
 ## 🌊 Settle in and keep the line moving
 
