@@ -1,9 +1,8 @@
 import type { FishDefinition } from "./types";
 
 export const GAME_CONFIG = {
-  match: {
+  session: {
     countdownSeconds: 3,
-    timedDurationSeconds: 60,
   },
   bar: {
     height: 0.24,
@@ -29,19 +28,6 @@ export const GAME_CONFIG = {
   simulation: {
     maxDeltaSeconds: 0.04,
     fishEdgePadding: 0.035,
-  },
-  cooperative: {
-    zone: {
-      width: 0.22,
-      height: 0.22,
-    },
-    horizontal: {
-      heldAcceleration: 1.7,
-      releasedAcceleration: -1.7,
-      velocityDamping: 1.7,
-      maxSpeed: 0.7,
-      edgeBounce: 0.24,
-    },
   },
 } as const;
 

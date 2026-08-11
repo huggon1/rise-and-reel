@@ -19,11 +19,10 @@ export interface SoloGameState {
 }
 
 export const createSoloGame = (
-  keyCode: string,
   random: RandomSource = Math.random,
 ): SoloGameState => ({
   session: startFishingSession(createFishingSession()),
-  lane: createLane({ id: 1, name: "Angler", keyCode }, random),
+  lane: createLane({ id: 1, name: "Angler" }, random),
 });
 
 export const advanceSoloGame = (

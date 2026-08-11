@@ -20,7 +20,7 @@ describe("fishing session lifecycle", () => {
 
     session = startFishingSession(session);
     expect(session.phase).toBe("countdown");
-    expect(session.countdownSeconds).toBe(GAME_CONFIG.match.countdownSeconds);
+    expect(session.countdownSeconds).toBe(GAME_CONFIG.session.countdownSeconds);
 
     session = advanceFishingSession(session, 2);
     expect(session.phase).toBe("countdown");
@@ -43,7 +43,7 @@ describe("fishing session lifecycle", () => {
       let session = startFishingSession(createFishingSession());
       session = advanceFishingSession(
         session,
-        GAME_CONFIG.match.countdownSeconds + 5,
+        GAME_CONFIG.session.countdownSeconds + 5,
       );
       session = pauseFishingSession(session, reason);
 
@@ -69,7 +69,7 @@ describe("fishing session lifecycle", () => {
     let completed = startFishingSession(createFishingSession());
     completed = advanceFishingSession(
       completed,
-      GAME_CONFIG.match.countdownSeconds,
+      GAME_CONFIG.session.countdownSeconds,
     );
     completed = confirmGroupExit(requestGroupExit(completed));
 
@@ -81,7 +81,7 @@ describe("fishing session lifecycle", () => {
     let session = startFishingSession(createFishingSession());
     session = advanceFishingSession(
       session,
-      GAME_CONFIG.match.countdownSeconds,
+      GAME_CONFIG.session.countdownSeconds,
     );
     const paused = pauseFishingSession(session, "manual");
 

@@ -204,7 +204,7 @@ export const advanceLane = (
     lane.phaseTime -= delta;
     if (lane.phaseTime <= 0) {
       return newRound(
-        { id: lane.id, name: lane.name, keyCode: lane.keyCode },
+        { id: lane.id, name: lane.name },
         lane,
         random,
       );

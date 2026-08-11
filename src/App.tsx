@@ -201,7 +201,7 @@ export default function App() {
   const beginSession = useCallback(() => {
     sessionIdentity.current = { id: createSessionId(), startedAt: new Date() };
     pressedKeys.current.clear();
-    setGame(createSoloGame(keyCode));
+    setGame(createSoloGame());
     setSummary(null);
     setSaveState("idle");
     setIsBest(false);
@@ -327,6 +327,13 @@ export default function App() {
         <div className="rail-note">
           <span>{tr("LOCAL WATERS", "本地水域")}</span>
           <p>{tr("Your sessions stay in this browser.", "你的钓鱼会话仅保存在当前浏览器。")}</p>
+          <a
+            href="https://github.com/huggon1/rise-and-reel"
+            target="_blank"
+            rel="noreferrer"
+          >
+            {tr("GitHub repository ↗", "GitHub 仓库 ↗")}
+          </a>
         </div>
       </aside>
 
