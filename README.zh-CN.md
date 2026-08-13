@@ -6,7 +6,7 @@
 
 一款轻松的桌面端钓鱼游戏：找到节奏，稳住钓线，再收获一条鱼。
 
-[English](README.md)
+[🌊 立即游玩 Rise & Reel](https://riseandreel.huggon1.com/) · [English](README.md)
 
 <img src="docs/media/rise-and-reel-key-art.png" alt="Rise & Reel 像素风宣传图：夕阳下，一名钓手向充满鱼群的湖泊抛线" width="100%">
 
