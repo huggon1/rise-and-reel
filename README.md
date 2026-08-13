@@ -6,7 +6,7 @@
 
 A calm desktop fishing game about finding the rhythm, holding the line, and landing one more catch.
 
-[简体中文](README.zh-CN.md)
+[🌊 Play Rise & Reel](https://riseandreel.huggon1.com/) · [简体中文](README.zh-CN.md)
 
 <img src="docs/media/rise-and-reel-key-art.png" alt="Rise & Reel pixel-art key art with a solo angler casting into a lively lake at sunset" width="100%">
 
