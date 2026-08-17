@@ -103,30 +103,36 @@ function MultiplayerLane({
   lane,
   keyCode,
   language,
+  compact = false,
 }: {
   lane: LaneState;
-  keyCode: string;
+  keyCode: string | null;
   language: Language;
+  compact?: boolean;
 }) {
   const overlap = isFishOverlappingBar(lane);
   const catchPercent = Math.round(lane.catchProgress * 100);
   const localizedPlayer =
     language === "en" ? `Player ${lane.id}` : `玩家 ${lane.id}`;
+  const playerLabel = compact ? `P${lane.id}` : localizedPlayer;
+  const statLabels = language === "en"
+    ? compact ? ["S", "C", "E"] : ["Score", "Caught", "Escaped"]
+    : compact ? ["分", "捕", "逃"] : ["得分", "捕获", "逃脱"];
   const style = {
     "--player-color": PLAYER_COLORS[lane.id - 1],
     "--fish-color": lane.fish.color,
   } as CSSProperties;
 
   return (
-    <article className="multiplayer-lane" style={style}>
+    <article className={`multiplayer-lane${compact ? " compact" : ""}`} style={style}>
       <header>
-        <span><i />{localizedPlayer}</span>
-        <kbd>{formatKeyCode(keyCode)}</kbd>
+        <span aria-label={localizedPlayer}><i />{playerLabel}</span>
+        {!compact && <kbd>{keyCode ? formatKeyCode(keyCode) : language === "en" ? "TOUCH" : "触控"}</kbd>}
       </header>
       <div className="multiplayer-stats">
-        <span>{language === "en" ? "Score" : "得分"}<strong>{lane.score}</strong></span>
-        <span>{language === "en" ? "Caught" : "捕获"}<strong>{lane.catches}</strong></span>
-        <span>{language === "en" ? "Escaped" : "逃脱"}<strong>{lane.escapes}</strong></span>
+        <span title={language === "en" ? "Score" : "得分"}>{statLabels[0]}<strong>{lane.score}</strong></span>
+        <span title={language === "en" ? "Caught" : "捕获"}>{statLabels[1]}<strong>{lane.catches}</strong></span>
+        <span title={language === "en" ? "Escaped" : "逃脱"}>{statLabels[2]}<strong>{lane.escapes}</strong></span>
       </div>
       <div className="multiplayer-water">
         <div className="water-lines" />
@@ -170,6 +176,65 @@ function MultiplayerLane({
   );
 }
 
+function TouchControls({
+  playerCount,
+  heldPlayers,
+  language,
+  onHoldChange,
+}: {
+  playerCount: number;
+  heldPlayers: ReadonlySet<number>;
+  language: Language;
+  onHoldChange: (playerId: number, held: boolean) => void;
+}) {
+  const isSolo = playerCount === 1;
+  const useCompactLabel = playerCount >= 3;
+
+  return (
+    <section
+      className={`touch-controls players-${playerCount}`}
+      aria-label={language === "en" ? "On-screen controls" : "屏幕控制"}
+    >
+      {Array.from({ length: playerCount }, (_, index) => {
+        const playerId = index + 1;
+        const held = heldPlayers.has(playerId);
+        const label = isSolo
+          ? language === "en" ? "Reel control" : "收线控制"
+          : language === "en" ? `Player ${playerId} reel control` : `玩家 ${playerId} 收线控制`;
+        const release = () => onHoldChange(playerId, false);
+
+        return (
+          <button
+            type="button"
+            key={playerId}
+            className={held ? "held" : ""}
+            style={{ "--player-color": PLAYER_COLORS[index] } as CSSProperties}
+            aria-label={label}
+            aria-pressed={held}
+            onContextMenu={(event) => event.preventDefault()}
+            onPointerDown={(event) => {
+              if (event.button !== 0) return;
+              event.preventDefault();
+              try {
+                event.currentTarget.setPointerCapture(event.pointerId);
+              } catch {
+                // Synthetic pointer events may not have an active pointer to capture.
+              }
+              onHoldChange(playerId, true);
+            }}
+            onPointerUp={release}
+            onPointerCancel={release}
+            onLostPointerCapture={release}
+          >
+            {!isSolo && <span>{language === "en" ? `P${playerId}` : `玩家 ${playerId}`}</span>}
+            <strong>{language === "en" ? useCompactLabel ? "HOLD" : "HOLD TO REEL" : useCompactLabel ? "按住" : "按住收线"}</strong>
+          </button>
+        );
+      })}
+    </section>
+  );
+}
+
 export default function App() {
   const initialPreferences = useMemo(() => {
     cleanupKnownLegacyStorage(window.localStorage);
@@ -200,7 +265,14 @@ export default function App() {
     useState<MultiplayerGameState | null>(null);
   const [multiplayerPendingAction, setMultiplayerPendingAction] =
     useState<PendingAction>(null);
+  const [prefersTouchControls, setPrefersTouchControls] = useState(() =>
+    window.matchMedia("(pointer: coarse)").matches,
+  );
+  const [heldTouchPlayers, setHeldTouchPlayers] = useState<ReadonlySet<number>>(
+    () => new Set(),
+  );
   const pressedKeys = useRef(new Set<string>());
+  const pressedTouchPlayers = useRef(new Set<number>());
   const sessionIdentity = useRef<{ id: string; startedAt: Date } | null>(null);
 
   const tr = useCallback(
@@ -208,6 +280,40 @@ export default function App() {
       language === "en" ? english : chinese,
     [language],
   );
+
+  const setTouchControlHeld = useCallback((playerId: number, held: boolean) => {
+    if (pressedTouchPlayers.current.has(playerId) === held) return;
+    const next = new Set(pressedTouchPlayers.current);
+    if (held) next.add(playerId);
+    else next.delete(playerId);
+    pressedTouchPlayers.current = next;
+    setHeldTouchPlayers(next);
+  }, []);
+
+  const clearHeldControls = useCallback(() => {
+    pressedKeys.current.clear();
+    if (pressedTouchPlayers.current.size > 0) {
+      pressedTouchPlayers.current = new Set();
+      setHeldTouchPlayers(new Set());
+    }
+  }, []);
+
+  useEffect(() => {
+    const media = window.matchMedia("(pointer: coarse)");
+    const updatePreference = () => {
+      if (!media.matches) clearHeldControls();
+      setPrefersTouchControls(media.matches);
+    };
+    updatePreference();
+    media.addEventListener("change", updatePreference);
+    return () => media.removeEventListener("change", updatePreference);
+  }, [clearHeldControls]);
+
+  useEffect(() => {
+    if (screen === "game" || screen === "multiplayer-game") {
+      window.scrollTo({ top: 0, left: 0 });
+    }
+  }, [screen]);
 
   useEffect(() => {
     document.documentElement.lang = language === "en" ? "en" : "zh-CN";
@@ -261,17 +367,17 @@ export default function App() {
   }, [multiplayerBindings, screen, tr]);
 
   const interruptSession = useCallback((reason: SessionPauseReason) => {
-    pressedKeys.current.clear();
+    clearHeldControls();
     setGame((current) =>
       current
         ? { ...current, session: pauseFishingSession(current.session, reason) }
         : current,
     );
-  }, []);
+  }, [clearHeldControls]);
 
   const interruptMultiplayerSession = useCallback(
     (reason: SessionPauseReason) => {
-      pressedKeys.current.clear();
+      clearHeldControls();
       setMultiplayerGame((current) =>
         current
           ? {
@@ -281,7 +387,7 @@ export default function App() {
           : current,
       );
     },
-    [],
+    [clearHeldControls],
   );
 
   useEffect(() => {
@@ -309,9 +415,9 @@ export default function App() {
       window.removeEventListener("keyup", up);
       window.removeEventListener("blur", blur);
       document.removeEventListener("visibilitychange", visibility);
-      pressedKeys.current.clear();
+      clearHeldControls();
     };
-  }, [interruptSession, keyCode, screen]);
+  }, [clearHeldControls, interruptSession, keyCode, screen]);
 
   const multiplayerKeySignature = multiplayerBindings.join("|");
   useEffect(() => {
@@ -340,12 +446,13 @@ export default function App() {
       window.removeEventListener("keyup", up);
       window.removeEventListener("blur", blur);
       document.removeEventListener("visibilitychange", visibility);
-      pressedKeys.current.clear();
+      clearHeldControls();
     };
   }, [
     interruptMultiplayerSession,
     multiplayerBindings,
     multiplayerKeySignature,
+    clearHeldControls,
     screen,
   ]);
 
@@ -362,7 +469,9 @@ export default function App() {
       setGame((current) => {
         if (!current) return current;
         const input = createLogicalInput(
-          pressedKeys.current.has(keyCode) ? [playerControlId(1)] : [],
+          pressedKeys.current.has(keyCode) || pressedTouchPlayers.current.has(1)
+            ? [playerControlId(1)]
+            : [],
         );
         return advanceSoloGame(current, input, elapsed);
       });
@@ -388,7 +497,8 @@ export default function App() {
       setMultiplayerGame((current) => {
         if (!current) return current;
         const controls = multiplayerBindings.flatMap((binding, index) =>
-          binding && pressedKeys.current.has(binding)
+          (binding && pressedKeys.current.has(binding)) ||
+          pressedTouchPlayers.current.has(index + 1)
             ? [playerControlId(index + 1)]
             : [],
         );
@@ -406,26 +516,29 @@ export default function App() {
 
   const beginSession = useCallback(() => {
     sessionIdentity.current = { id: createSessionId(), startedAt: new Date() };
-    pressedKeys.current.clear();
+    clearHeldControls();
     setGame(createSoloGame());
     setSummary(null);
     setSaveState("idle");
     setIsBest(false);
     setPendingAction(null);
     setScreen("game");
-  }, [keyCode]);
+  }, [clearHeldControls]);
 
   const beginMultiplayerSession = useCallback(() => {
-    if (multiplayerBindings.some((binding) => binding === null)) return;
+    if (
+      !prefersTouchControls &&
+      multiplayerBindings.some((binding) => binding === null)
+    ) return;
     const players = multiplayerBindings.map((_, index) => ({
       id: index + 1,
       name: `Player ${index + 1}`,
     }));
-    pressedKeys.current.clear();
+    clearHeldControls();
     setMultiplayerGame(createMultiplayerGame(players));
     setMultiplayerPendingAction(null);
     setScreen("multiplayer-game");
-  }, [multiplayerBindings]);
+  }, [clearHeldControls, multiplayerBindings, prefersTouchControls]);
 
   const selectMultiplayerCount = (count: number) => {
     setMultiplayerCount(count);
@@ -454,6 +567,7 @@ export default function App() {
   );
 
   const askTo = (action: Exclude<PendingAction, null>) => {
+    clearHeldControls();
     setPendingAction(action);
     setGame((current) =>
       current
@@ -519,6 +633,7 @@ export default function App() {
   };
 
   const askMultiplayerTo = (action: Exclude<PendingAction, null>) => {
+    clearHeldControls();
     setMultiplayerPendingAction(action);
     setMultiplayerGame((current) =>
       current
@@ -542,7 +657,7 @@ export default function App() {
       beginMultiplayerSession();
       return;
     }
-    pressedKeys.current.clear();
+    clearHeldControls();
     setMultiplayerGame(null);
     setMultiplayerPendingAction(null);
     setScreen("home");
@@ -593,7 +708,7 @@ export default function App() {
   const catchPercent = lane ? Math.round(lane.catchProgress * 100) : 0;
 
   return (
-    <main className="tide-shell">
+    <main className={`tide-shell ${screen === "game" || screen === "multiplayer-game" ? "playing" : ""}`}>
       <aside className="tide-rail">
         <button className="brand-lockup" onClick={navHome} aria-label="Rise & Reel">
           <span className="brand-mark">R</span>
@@ -637,7 +752,9 @@ export default function App() {
             <div className="hero-copy">
               <p className="eyebrow">{tr("YOUR TIDE, YOUR PACE", "跟随自己的潮汐")}</p>
               <h1>{tr("Settle in. Keep the line moving.", "坐稳，抛线，慢慢钓。")}</h1>
-              <p>{tr("One key. No clock. Catch what you can, then end the session when you are ready.", "一个按键，不限时间。想钓多久就钓多久，准备好时再结束会话。")}</p>
+              <p>{prefersTouchControls
+                ? tr("One control. No clock. Catch what you can, then end the session when you are ready.", "一个触控按钮，不限时间。想钓多久就钓多久，准备好时再结束会话。")
+                : tr("One key. No clock. Catch what you can, then end the session when you are ready.", "一个按键，不限时间。想钓多久就钓多久，准备好时再结束会话。")}</p>
               <div className="action-row">
                 <button className="primary-action" onClick={() => setScreen("setup")}>{tr("Set up Solo Fishing", "设置单人钓鱼")} <span>→</span></button>
                 <button className="secondary-action" onClick={() => setScreen("multiplayer-setup")}>{tr("Play with 2–4 people", "2–4 人一起玩")}</button>
@@ -645,7 +762,7 @@ export default function App() {
               </div>
             </div>
             <div className="tide-cards">
-              <article><span>01</span><strong>{tr("Bind one key", "绑定一个按键")}</strong><p>{tr("Hold to rise. Release to fall.", "按住上升，松开下落。")}</p></article>
+              <article><span>01</span><strong>{prefersTouchControls ? tr("Use one touch control", "使用一个触控按钮") : tr("Bind one key", "绑定一个按键")}</strong><p>{tr("Hold to rise. Release to fall.", "按住上升，松开下落。")}</p></article>
               <article><span>02</span><strong>{tr("Fish without a limit", "不限时钓鱼")}</strong><p>{tr("Pause whenever the water needs to wait.", "需要离开时，随时暂停。")}</p></article>
               <article><span>03</span><strong>{tr("Leave together", "整组离开")}</strong><p>{tr("Confirm the end and keep a local summary.", "确认结束，并在本地保存总结。")}</p></article>
             </div>
@@ -654,14 +771,22 @@ export default function App() {
 
         {screen === "setup" && (
           <section className="content setup-view">
-            <div className="page-heading"><p className="eyebrow">{tr("SOLO SETUP", "单人设置")}</p><h1>{tr("Choose your reel key.", "选择你的收线按键。")}</h1><p>{tr("This setting stays in your browser for the next session.", "此设置会保存在当前浏览器，供下次使用。")}</p></div>
+            <div className="page-heading"><p className="eyebrow">{tr("SOLO SETUP", "单人设置")}</p><h1>{prefersTouchControls ? tr("Your reel control is ready.", "收线控制已准备好。") : tr("Choose your reel key.", "选择你的收线按键。")}</h1><p>{prefersTouchControls ? tr("Start fishing and hold the on-screen button to lift the catch zone.", "开始钓鱼后，按住屏幕按钮即可抬升捕获区。") : tr("This setting stays in your browser for the next session.", "此设置会保存在当前浏览器，供下次使用。")}</p></div>
             <div className="setup-grid">
-              <button className={`key-binding ${isBinding ? "listening" : ""}`} onClick={() => setIsBinding(true)}>
-                <span>{tr("REEL CONTROL", "收线控制")}</span>
-                <kbd>{isBinding ? tr("PRESS A KEY", "请按键") : formatKeyCode(keyCode)}</kbd>
-                <small>{tr("Click to change", "点击更改")}</small>
-              </button>
-              <article className="how-card"><strong>{tr("How the line moves", "鱼线如何移动")}</strong><p>{tr("Hold your key to lift the catch zone. Release it and gravity pulls the zone down.", "按住按键让捕获区上升；松开后，重力会让捕获区下落。")}</p><span>{tr("A short preparation count appears before the water starts.", "水域开始前会显示短暂准备倒计时。")}</span></article>
+              {prefersTouchControls ? (
+                <div className="key-binding touch-ready">
+                  <span>{tr("ON-SCREEN CONTROL", "屏幕控制")}</span>
+                  <kbd>{tr("TOUCH READY", "触控就绪")}</kbd>
+                  <small>{tr("A reel button will stay within thumb reach during play.", "游玩时，收线按钮会始终位于拇指可触及的位置。")}</small>
+                </div>
+              ) : (
+                <button className={`key-binding ${isBinding ? "listening" : ""}`} onClick={() => setIsBinding(true)}>
+                  <span>{tr("REEL CONTROL", "收线控制")}</span>
+                  <kbd>{isBinding ? tr("PRESS A KEY", "请按键") : formatKeyCode(keyCode)}</kbd>
+                  <small>{tr("Click to change", "点击更改")}</small>
+                </button>
+              )}
+              <article className="how-card"><strong>{tr("How the line moves", "鱼线如何移动")}</strong><p>{prefersTouchControls ? tr("Hold the reel button to lift the catch zone. Release it and gravity pulls the zone down.", "按住收线按钮让捕获区上升；松开后，重力会让捕获区下落。") : tr("Hold your key to lift the catch zone. Release it and gravity pulls the zone down.", "按住按键让捕获区上升；松开后，重力会让捕获区下落。")}</p><span>{tr("A short preparation count appears before the water starts.", "水域开始前会显示短暂准备倒计时。")}</span></article>
             </div>
             <div className="action-row"><button className="primary-action" onClick={beginSession}>{tr("Start fishing", "开始钓鱼")} <span>→</span></button><button className="secondary-action" onClick={() => setScreen("home")}>{tr("Back home", "返回首页")}</button></div>
           </section>
@@ -672,7 +797,9 @@ export default function App() {
             <div className="page-heading">
               <p className="eyebrow">{tr("MULTIPLAYER SETUP", "多人设置")}</p>
               <h1>{tr("Bring everyone to the dock.", "叫上大家，一起来码头。")}</h1>
-              <p>{tr("Choose 2–4 players, then press one unique reel key for each person.", "选择 2–4 名玩家，然后依次为每个人按下一个不同的收线键。")}</p>
+              <p>{prefersTouchControls
+                ? tr("Choose 2–4 players. Each person gets an on-screen reel button.", "选择 2–4 名玩家，每个人都会获得一个屏幕收线按钮。")
+                : tr("Choose 2–4 players, then press one unique reel key for each person.", "选择 2–4 名玩家，然后依次为每个人按下一个不同的收线键。")}</p>
             </div>
             <div className="multiplayer-setup-card">
               <div className="player-count-picker" aria-label={tr("Player count", "玩家人数")}>
@@ -687,7 +814,7 @@ export default function App() {
                   </button>
                 ))}
               </div>
-              <div className="multiplayer-bindings">
+              <div className={`multiplayer-bindings ${prefersTouchControls ? "touch-preview" : ""}`}>
                 {multiplayerBindings.map((binding, index) => {
                   const nextBinding = multiplayerBindings.findIndex(
                     (value) => value === null,
@@ -695,8 +822,9 @@ export default function App() {
                   return (
                     <button
                       key={index}
-                      className={index === nextBinding ? "listening" : ""}
+                      className={!prefersTouchControls && index === nextBinding ? "listening" : ""}
                       style={{ "--player-color": PLAYER_COLORS[index] } as CSSProperties}
+                      disabled={prefersTouchControls}
                       onClick={() => {
                         setMultiplayerBindings((current) =>
                           current.map((value, itemIndex) =>
@@ -707,15 +835,17 @@ export default function App() {
                       }}
                     >
                       <span>{tr(`Player ${index + 1}`, `玩家 ${index + 1}`)}</span>
-                      <kbd>{binding ? formatKeyCode(binding) : index === nextBinding ? tr("PRESS A KEY", "请按键") : tr("WAITING", "等待中")}</kbd>
-                      <small>{binding ? tr("Click to rebind", "点击重新绑定") : tr("One unique key each", "每人使用不同按键")}</small>
+                      <kbd>{prefersTouchControls ? tr("TOUCH", "触控") : binding ? formatKeyCode(binding) : index === nextBinding ? tr("PRESS A KEY", "请按键") : tr("WAITING", "等待中")}</kbd>
+                      <small>{prefersTouchControls ? tr("On-screen reel button", "屏幕收线按钮") : binding ? tr("Click to rebind", "点击重新绑定") : tr("One unique key each", "每人使用不同按键")}</small>
                     </button>
                   );
                 })}
               </div>
               <p className={`binding-feedback ${multiplayerBindingError ? "error" : ""}`} role="status">
                 {multiplayerBindingError ||
-                  (multiplayerBindings.every(Boolean)
+                  (prefersTouchControls
+                    ? tr("On-screen controls are ready.", "屏幕控制已准备好。")
+                    : multiplayerBindings.every(Boolean)
                     ? tr("Everyone is ready.", "所有人都准备好了。")
                     : tr(
                         `Waiting for Player ${multiplayerBindings.findIndex((binding) => binding === null) + 1}.`,
@@ -724,18 +854,18 @@ export default function App() {
               </p>
             </div>
             <div className="action-row">
-              <button className="primary-action" disabled={multiplayerBindings.some((binding) => binding === null)} onClick={beginMultiplayerSession}>{tr("Start multiplayer", "开始多人游戏")} <span>→</span></button>
+              <button className="primary-action" disabled={!prefersTouchControls && multiplayerBindings.some((binding) => binding === null)} onClick={beginMultiplayerSession}>{tr("Start multiplayer", "开始多人游戏")} <span>→</span></button>
               <button className="secondary-action" onClick={() => setScreen("home")}>{tr("Back home", "返回首页")}</button>
             </div>
           </section>
         )}
 
         {screen === "multiplayer-game" && multiplayerGame && (
-          <section className="game-view multiplayer-game-view">
+          <section className={`game-view multiplayer-game-view ${prefersTouchControls ? "touch-enabled" : ""}`}>
             <div className="game-toolbar">
               <div><p className="eyebrow">{tr("MULTIPLAYER", "多人模式")}</p><strong>{formatDuration(multiplayerGame.session.activeSeconds * 1000)}</strong><small>{tr("active time", "有效时长")}</small></div>
               <div className="game-actions">
-                <button onClick={() => setMultiplayerGame({ ...multiplayerGame, session: multiplayerGame.session.phase === "paused" ? resumeFishingSession(multiplayerGame.session) : pauseFishingSession(multiplayerGame.session) })}>{multiplayerGame.session.phase === "paused" ? tr("Resume", "继续") : tr("Pause", "暂停")}</button>
+                <button onClick={() => multiplayerGame.session.phase === "paused" ? setMultiplayerGame({ ...multiplayerGame, session: resumeFishingSession(multiplayerGame.session) }) : interruptMultiplayerSession("manual")}>{multiplayerGame.session.phase === "paused" ? tr("Resume", "继续") : tr("Pause", "暂停")}</button>
                 <button onClick={() => askMultiplayerTo("restart")}>{tr("Restart", "重新开始")}</button>
                 <button className="danger" onClick={() => askMultiplayerTo("finish")}>{tr("End match", "结束比赛")}</button>
               </div>
@@ -745,11 +875,20 @@ export default function App() {
                 <MultiplayerLane
                   key={multiplayerLane.id}
                   lane={multiplayerLane}
-                  keyCode={multiplayerBindings[index]!}
+                  keyCode={multiplayerBindings[index]}
                   language={language}
+                  compact={prefersTouchControls}
                 />
               ))}
             </div>
+            {prefersTouchControls && (
+              <TouchControls
+                playerCount={multiplayerGame.lanes.length}
+                heldPlayers={heldTouchPlayers}
+                language={language}
+                onHoldChange={setTouchControlHeld}
+              />
+            )}
             {multiplayerGame.session.phase === "countdown" && <div className="modal-backdrop countdown" role="status"><div className="countdown-card"><p>{tr("GET READY", "准备")}</p><strong>{Math.max(1, Math.ceil(multiplayerGame.session.countdownSeconds))}</strong><span>{tr("Every lane opens when the count reaches zero.", "倒计时归零后，所有赛道同时开始。")}</span></div></div>}
             {multiplayerGame.session.phase === "paused" && <div className="modal-backdrop"><div className="modal-card"><p className="eyebrow">{tr("LINES HELD", "鱼线已停")}</p><h2>{multiplayerGame.session.pauseReason === "manual" ? tr("Match paused", "比赛已暂停") : tr("Welcome back", "欢迎回来")}</h2><p>{tr("Every lane and the active timer are stopped.", "所有赛道和有效计时均已暂停。")}</p><button className="primary-action" onClick={() => setMultiplayerGame({ ...multiplayerGame, session: resumeFishingSession(multiplayerGame.session) })}>{tr("Resume match", "继续比赛")}</button></div></div>}
             {multiplayerGame.session.phase === "confirming-exit" && <div className="modal-backdrop"><div className="modal-card"><p className="eyebrow">{tr("CONFIRM ACTION", "确认操作")}</p><h2>{multiplayerPendingAction === "restart" ? tr("Start over?", "重新开始？") : tr("End this match?", "结束本场比赛？")}</h2><p>{multiplayerPendingAction === "restart" ? tr("Every player's current score will be discarded.", "所有玩家的当前得分都会被放弃。") : tr("The match ends for everyone. Multiplayer results are not saved to Solo History.", "比赛将为所有玩家结束；多人结果不会保存到单人历史。")}</p><div className="action-row"><button className="primary-action" onClick={confirmMultiplayerAction}>{multiplayerPendingAction === "restart" ? tr("Restart now", "立即重新开始") : tr("End match", "结束比赛")}</button><button className="secondary-action" onClick={cancelMultiplayerConfirmation}>{tr("Keep fishing", "继续钓鱼")}</button></div></div></div>}
@@ -757,15 +896,23 @@ export default function App() {
         )}
 
         {screen === "game" && game && lane && (
-          <section className="game-view">
+          <section className={`game-view ${prefersTouchControls ? "touch-enabled" : ""}`}>
             <div className="game-toolbar">
               <div><p className="eyebrow">{tr("SOLO FISHING", "单人钓鱼")}</p><strong>{formatDuration(game.session.activeSeconds * 1000)}</strong><small>{tr("active time", "有效时长")}</small></div>
               <div className="game-actions">
-                <button onClick={() => game.session.phase === "paused" ? setGame({ ...game, session: resumeFishingSession(game.session) }) : setGame({ ...game, session: pauseFishingSession(game.session) })}>{game.session.phase === "paused" ? tr("Resume", "继续") : tr("Pause", "暂停")}</button>
+                <button onClick={() => game.session.phase === "paused" ? setGame({ ...game, session: resumeFishingSession(game.session) }) : interruptSession("manual")}>{game.session.phase === "paused" ? tr("Resume", "继续") : tr("Pause", "暂停")}</button>
                 <button onClick={() => askTo("restart")}>{tr("Restart", "重新开始")}</button>
                 <button className="danger" onClick={() => askTo("finish")}>{tr("End session", "结束会话")}</button>
               </div>
             </div>
+            {prefersTouchControls && (
+              <TouchControls
+                playerCount={1}
+                heldPlayers={heldTouchPlayers}
+                language={language}
+                onHoldChange={setTouchControlHeld}
+              />
+            )}
             <div className="solo-board">
               <aside className="session-stats">
                 <div><span>{tr("Session score", "会话得分")}</span><strong>{lane.score}</strong></div>
