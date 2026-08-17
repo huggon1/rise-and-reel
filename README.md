@@ -2,9 +2,9 @@
 
 # 🎣 Rise & Reel
 
-### One key. No clock. Your tide, your pace.
+### One key each. No clock. Your tide, your pace.
 
-A calm desktop fishing game about finding the rhythm, holding the line, and landing one more catch.
+A calm desktop fishing game for solo sessions or local 2–4 player showdowns.
 
 [🌊 Play Rise & Reel](https://riseandreel.huggon1.com/) · [简体中文](README.zh-CN.md)
 
@@ -31,13 +31,14 @@ No frantic countdown. No account setup. Just you, the water, and the next catch.
 
 - 🎮 A complete desktop Solo Fishing session.
 - ⌨️ One configurable keyboard control.
+- 👥 Local competitive Multiplayer for 2–4 players on one keyboard.
 - 🌍 English and Simplified Chinese interfaces.
 - ⏸️ Pause, resume, restart confirmation, and a deliberate session ending.
 - 📊 Session summaries with active time, score, catches, escapes, and best streak.
 - 🏆 Personal bests, lifetime score, and the latest 100 sessions saved in your browser.
 - 🧪 Automated coverage in Chromium, Firefox, and WebKit.
 
-Version 0.1.0 is designed for desktop keyboard play. Multiplayer, 2D fishing, mobile touch controls, cloud sync, accounts, session recovery, and background music are outside this release.
+Version 0.1.0 is designed for desktop keyboard play. Multiplayer matches use independent lanes and are not written to Solo History. Cooperative 2D fishing, mobile touch controls, cloud sync, accounts, session recovery, and background music remain outside this release.
 
 ## 🕹️ Controls
 
@@ -45,8 +46,9 @@ Version 0.1.0 is designed for desktop keyboard play. Multiplayer, 2D fishing, mo
 | --- | --- |
 | Raise the catch zone | Hold your selected key |
 | Lower the catch zone | Release the key |
+| Start a local match | Choose 2–4 players and bind a unique key for each |
 | Pause or continue | Use the on-screen control |
-| Finish a session | Choose **End session** and confirm |
+| Finish a session or match | Choose the on-screen end action and confirm |
 
 ## 🚀 Run it locally
 
@@ -57,7 +59,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173`, choose **Solo Fishing**, bind a key, and cast off.
+Open `http://localhost:5173`, then choose **Solo Fishing** or **Multiplayer**. Multiplayer supports 2–4 people sharing one keyboard with one unique key each.
 
 ## ✅ Verify the build
 

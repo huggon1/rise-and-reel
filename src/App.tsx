@@ -17,7 +17,12 @@ import {
   resumeFishingSession,
   type SessionPauseReason,
 } from "./game/session";
-import type { FishId } from "./game/types";
+import type { FishId, LaneState } from "./game/types";
+import {
+  advanceMultiplayerGame,
+  createMultiplayerGame,
+  type MultiplayerGameState,
+} from "./multiplayer/game";
 import { advanceSoloGame, createSoloGame, type SoloGameState } from "./solo/game";
 import {
   cleanupKnownLegacyStorage,
@@ -31,9 +36,18 @@ import {
   type SoloSessionRecord,
 } from "./solo/storage";
 
-type Screen = "home" | "setup" | "game" | "summary" | "history";
+type Screen =
+  | "home"
+  | "setup"
+  | "game"
+  | "summary"
+  | "history"
+  | "multiplayer-setup"
+  | "multiplayer-game";
 type SaveState = "idle" | "saving" | "saved" | "error";
 type PendingAction = "finish" | "restart" | null;
+
+const PLAYER_COLORS = ["#ffcf70", "#67d5c3", "#ff8f8f", "#b6a1ff"];
 
 const EMPTY_HISTORY: SoloHistory = {
   sessions: [],
@@ -85,6 +99,77 @@ const fishNames: Record<FishId, { en: string; zh: string }> = {
   squid: { en: "Squid", zh: "鱿鱼" },
 };
 
+function MultiplayerLane({
+  lane,
+  keyCode,
+  language,
+}: {
+  lane: LaneState;
+  keyCode: string;
+  language: Language;
+}) {
+  const overlap = isFishOverlappingBar(lane);
+  const catchPercent = Math.round(lane.catchProgress * 100);
+  const localizedPlayer =
+    language === "en" ? `Player ${lane.id}` : `玩家 ${lane.id}`;
+  const style = {
+    "--player-color": PLAYER_COLORS[lane.id - 1],
+    "--fish-color": lane.fish.color,
+  } as CSSProperties;
+
+  return (
+    <article className="multiplayer-lane" style={style}>
+      <header>
+        <span><i />{localizedPlayer}</span>
+        <kbd>{formatKeyCode(keyCode)}</kbd>
+      </header>
+      <div className="multiplayer-stats">
+        <span>{language === "en" ? "Score" : "得分"}<strong>{lane.score}</strong></span>
+        <span>{language === "en" ? "Caught" : "捕获"}<strong>{lane.catches}</strong></span>
+        <span>{language === "en" ? "Escaped" : "逃脱"}<strong>{lane.escapes}</strong></span>
+      </div>
+      <div className="multiplayer-water">
+        <div className="water-lines" />
+        <div
+          className={`catch-zone ${overlap ? "overlap" : ""}`}
+          style={{
+            top: `${lane.barY * 100}%`,
+            height: `${GAME_CONFIG.bar.height * 100}%`,
+          }}
+        ><span /></div>
+        <div
+          className={`fish-marker ${overlap ? "overlap" : ""}`}
+          style={{ top: `${lane.fishY * 100}%` }}
+          aria-label={fishNames[lane.fish.id][language]}
+        >{lane.fish.symbol}</div>
+        {lane.phase !== "fishing" && (
+          <div className={`round-callout ${lane.phase}`}>
+            <strong>
+              {lane.phase === "caught"
+                ? language === "en"
+                  ? `Caught! +${lane.lastReward}`
+                  : `捕获！+${lane.lastReward}`
+                : language === "en" ? "Escaped" : "逃脱"}
+            </strong>
+          </div>
+        )}
+      </div>
+      <div className="multiplayer-meter">
+        <span>{language === "en" ? "Catch meter" : "捕获进度"}</span>
+        <strong>{catchPercent}%</strong>
+        <div
+          className="meter-track"
+          role="progressbar"
+          aria-label={`${localizedPlayer} ${language === "en" ? "catch meter" : "捕获进度"}`}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={catchPercent}
+        ><span style={{ width: `${catchPercent}%` }} /></div>
+      </div>
+    </article>
+  );
+}
+
 export default function App() {
   const initialPreferences = useMemo(() => {
     cleanupKnownLegacyStorage(window.localStorage);
@@ -106,6 +191,15 @@ export default function App() {
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [history, setHistory] = useState<SoloHistory>(EMPTY_HISTORY);
   const [isBest, setIsBest] = useState(false);
+  const [multiplayerCount, setMultiplayerCount] = useState(2);
+  const [multiplayerBindings, setMultiplayerBindings] = useState<
+    (string | null)[]
+  >([null, null]);
+  const [multiplayerBindingError, setMultiplayerBindingError] = useState("");
+  const [multiplayerGame, setMultiplayerGame] =
+    useState<MultiplayerGameState | null>(null);
+  const [multiplayerPendingAction, setMultiplayerPendingAction] =
+    useState<PendingAction>(null);
   const pressedKeys = useRef(new Set<string>());
   const sessionIdentity = useRef<{ id: string; startedAt: Date } | null>(null);
 
@@ -117,7 +211,7 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.lang = language === "en" ? "en" : "zh-CN";
-    document.title = tr("Rise & Reel · Solo Fishing", "Rise & Reel · 单人钓鱼");
+    document.title = tr("Rise & Reel · Local Fishing", "Rise & Reel · 本地钓鱼");
     try {
       savePreferences(window.localStorage, { language, keyCode });
     } catch {
@@ -137,6 +231,35 @@ export default function App() {
     return () => window.removeEventListener("keydown", bind);
   }, [isBinding, screen]);
 
+  useEffect(() => {
+    if (screen !== "multiplayer-setup") return;
+    const bind = (event: KeyboardEvent) => {
+      if (event.repeat || BLOCKED_BINDINGS.has(event.code)) return;
+      const openIndex = multiplayerBindings.findIndex(
+        (binding) => binding === null,
+      );
+      if (openIndex === -1) return;
+      event.preventDefault();
+      if (multiplayerBindings.includes(event.code)) {
+        setMultiplayerBindingError(
+          tr(
+            `${formatKeyCode(event.code)} is already assigned.`,
+            `${formatKeyCode(event.code)} 已被绑定。`,
+          ),
+        );
+        return;
+      }
+      setMultiplayerBindings((current) =>
+        current.map((binding, index) =>
+          index === openIndex ? event.code : binding,
+        ),
+      );
+      setMultiplayerBindingError("");
+    };
+    window.addEventListener("keydown", bind);
+    return () => window.removeEventListener("keydown", bind);
+  }, [multiplayerBindings, screen, tr]);
+
   const interruptSession = useCallback((reason: SessionPauseReason) => {
     pressedKeys.current.clear();
     setGame((current) =>
@@ -145,6 +268,21 @@ export default function App() {
         : current,
     );
   }, []);
+
+  const interruptMultiplayerSession = useCallback(
+    (reason: SessionPauseReason) => {
+      pressedKeys.current.clear();
+      setMultiplayerGame((current) =>
+        current
+          ? {
+              ...current,
+              session: pauseFishingSession(current.session, reason),
+            }
+          : current,
+      );
+    },
+    [],
+  );
 
   useEffect(() => {
     if (screen !== "game") return;
@@ -175,6 +313,42 @@ export default function App() {
     };
   }, [interruptSession, keyCode, screen]);
 
+  const multiplayerKeySignature = multiplayerBindings.join("|");
+  useEffect(() => {
+    if (screen !== "multiplayer-game") return;
+    const codes = new Set(multiplayerBindings.filter(Boolean) as string[]);
+    const down = (event: KeyboardEvent) => {
+      if (!codes.has(event.code)) return;
+      event.preventDefault();
+      pressedKeys.current.add(event.code);
+    };
+    const up = (event: KeyboardEvent) => {
+      if (!codes.has(event.code)) return;
+      event.preventDefault();
+      pressedKeys.current.delete(event.code);
+    };
+    const blur = () => interruptMultiplayerSession("window-blur");
+    const visibility = () => {
+      if (document.hidden) interruptMultiplayerSession("page-hidden");
+    };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    window.addEventListener("blur", blur);
+    document.addEventListener("visibilitychange", visibility);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+      window.removeEventListener("blur", blur);
+      document.removeEventListener("visibilitychange", visibility);
+      pressedKeys.current.clear();
+    };
+  }, [
+    interruptMultiplayerSession,
+    multiplayerBindings,
+    multiplayerKeySignature,
+    screen,
+  ]);
+
   const phase = game?.session.phase;
   useEffect(() => {
     if (screen !== "game" || (phase !== "countdown" && phase !== "active")) {
@@ -198,6 +372,38 @@ export default function App() {
     return () => cancelAnimationFrame(frame);
   }, [keyCode, phase, screen]);
 
+  const multiplayerPhase = multiplayerGame?.session.phase;
+  useEffect(() => {
+    if (
+      screen !== "multiplayer-game" ||
+      (multiplayerPhase !== "countdown" && multiplayerPhase !== "active")
+    ) {
+      return;
+    }
+    let frame = 0;
+    let previous = performance.now();
+    const tick = (now: number) => {
+      const elapsed = (now - previous) / 1000;
+      previous = now;
+      setMultiplayerGame((current) => {
+        if (!current) return current;
+        const controls = multiplayerBindings.flatMap((binding, index) =>
+          binding && pressedKeys.current.has(binding)
+            ? [playerControlId(index + 1)]
+            : [],
+        );
+        return advanceMultiplayerGame(
+          current,
+          createLogicalInput(controls),
+          elapsed,
+        );
+      });
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [multiplayerBindings, multiplayerPhase, screen]);
+
   const beginSession = useCallback(() => {
     sessionIdentity.current = { id: createSessionId(), startedAt: new Date() };
     pressedKeys.current.clear();
@@ -208,6 +414,24 @@ export default function App() {
     setPendingAction(null);
     setScreen("game");
   }, [keyCode]);
+
+  const beginMultiplayerSession = useCallback(() => {
+    if (multiplayerBindings.some((binding) => binding === null)) return;
+    const players = multiplayerBindings.map((_, index) => ({
+      id: index + 1,
+      name: `Player ${index + 1}`,
+    }));
+    pressedKeys.current.clear();
+    setMultiplayerGame(createMultiplayerGame(players));
+    setMultiplayerPendingAction(null);
+    setScreen("multiplayer-game");
+  }, [multiplayerBindings]);
+
+  const selectMultiplayerCount = (count: number) => {
+    setMultiplayerCount(count);
+    setMultiplayerBindings(Array.from({ length: count }, () => null));
+    setMultiplayerBindingError("");
+  };
 
   const loadHistory = useCallback(async () => {
     setHistory(await historyRepository.read());
@@ -282,9 +506,46 @@ export default function App() {
   const navHome = () => {
     if (screen === "game") {
       askTo("finish");
+    } else if (screen === "multiplayer-game") {
+      setMultiplayerPendingAction("finish");
+      setMultiplayerGame((current) =>
+        current
+          ? { ...current, session: requestGroupExit(current.session) }
+          : current,
+      );
     } else {
       setScreen("home");
     }
+  };
+
+  const askMultiplayerTo = (action: Exclude<PendingAction, null>) => {
+    setMultiplayerPendingAction(action);
+    setMultiplayerGame((current) =>
+      current
+        ? { ...current, session: requestGroupExit(current.session) }
+        : current,
+    );
+  };
+
+  const cancelMultiplayerConfirmation = () => {
+    setMultiplayerPendingAction(null);
+    setMultiplayerGame((current) =>
+      current
+        ? { ...current, session: cancelGroupExit(current.session) }
+        : current,
+    );
+  };
+
+  const confirmMultiplayerAction = () => {
+    if (!multiplayerGame || !multiplayerPendingAction) return;
+    if (multiplayerPendingAction === "restart") {
+      beginMultiplayerSession();
+      return;
+    }
+    pressedKeys.current.clear();
+    setMultiplayerGame(null);
+    setMultiplayerPendingAction(null);
+    setScreen("home");
   };
 
   const navItems = [
@@ -292,16 +553,41 @@ export default function App() {
     {
       id: "setup" as const,
       label: tr("Solo Fishing", "单人钓鱼"),
-      action: () => (screen === "game" ? askTo("restart") : setScreen("setup")),
+      action: () =>
+        screen === "game"
+          ? askTo("restart")
+          : screen === "multiplayer-game"
+            ? askMultiplayerTo("finish")
+            : setScreen("setup"),
+    },
+    {
+      id: "multiplayer-setup" as const,
+      label: tr("Multiplayer", "多人模式"),
+      action: () =>
+        screen === "game"
+          ? askTo("finish")
+          : screen === "multiplayer-game"
+            ? askMultiplayerTo("restart")
+            : setScreen("multiplayer-setup"),
     },
     {
       id: "history" as const,
       label: tr("History", "历史"),
-      action: () => (screen === "game" ? askTo("finish") : showHistory()),
+      action: () =>
+        screen === "game"
+          ? askTo("finish")
+          : screen === "multiplayer-game"
+            ? askMultiplayerTo("finish")
+            : showHistory(),
     },
   ];
 
-  const activeNav = screen === "summary" ? "setup" : screen;
+  const activeNav =
+    screen === "summary"
+      ? "setup"
+      : screen === "multiplayer-game"
+        ? "multiplayer-setup"
+        : screen;
   const lane = game?.lane;
   const overlap = lane ? isFishOverlappingBar(lane) : false;
   const catchPercent = lane ? Math.round(lane.catchProgress * 100) : 0;
@@ -339,7 +625,7 @@ export default function App() {
 
       <section className="tide-main">
         <header className="topline">
-          <div className="status-dot">{tr("SOLO WATERS OPEN", "单人水域开放")}</div>
+          <div className="status-dot">{tr("LOCAL WATERS OPEN", "本地水域开放")}</div>
           <div className="language-switch" aria-label={tr("Language", "语言")}>
             <button className={language === "en" ? "active" : ""} onClick={() => setLanguage("en")}>EN</button>
             <button className={language === "zh" ? "active" : ""} onClick={() => setLanguage("zh")}>中文</button>
@@ -354,7 +640,8 @@ export default function App() {
               <p>{tr("One key. No clock. Catch what you can, then end the session when you are ready.", "一个按键，不限时间。想钓多久就钓多久，准备好时再结束会话。")}</p>
               <div className="action-row">
                 <button className="primary-action" onClick={() => setScreen("setup")}>{tr("Set up Solo Fishing", "设置单人钓鱼")} <span>→</span></button>
-                <button className="secondary-action" onClick={showHistory}>{tr("View history", "查看历史")}</button>
+                <button className="secondary-action" onClick={() => setScreen("multiplayer-setup")}>{tr("Play with 2–4 people", "2–4 人一起玩")}</button>
+                <button className="quiet-action" onClick={showHistory}>{tr("View history", "查看历史")}</button>
               </div>
             </div>
             <div className="tide-cards">
@@ -377,6 +664,95 @@ export default function App() {
               <article className="how-card"><strong>{tr("How the line moves", "鱼线如何移动")}</strong><p>{tr("Hold your key to lift the catch zone. Release it and gravity pulls the zone down.", "按住按键让捕获区上升；松开后，重力会让捕获区下落。")}</p><span>{tr("A short preparation count appears before the water starts.", "水域开始前会显示短暂准备倒计时。")}</span></article>
             </div>
             <div className="action-row"><button className="primary-action" onClick={beginSession}>{tr("Start fishing", "开始钓鱼")} <span>→</span></button><button className="secondary-action" onClick={() => setScreen("home")}>{tr("Back home", "返回首页")}</button></div>
+          </section>
+        )}
+
+        {screen === "multiplayer-setup" && (
+          <section className="content setup-view">
+            <div className="page-heading">
+              <p className="eyebrow">{tr("MULTIPLAYER SETUP", "多人设置")}</p>
+              <h1>{tr("Bring everyone to the dock.", "叫上大家，一起来码头。")}</h1>
+              <p>{tr("Choose 2–4 players, then press one unique reel key for each person.", "选择 2–4 名玩家，然后依次为每个人按下一个不同的收线键。")}</p>
+            </div>
+            <div className="multiplayer-setup-card">
+              <div className="player-count-picker" aria-label={tr("Player count", "玩家人数")}>
+                {[2, 3, 4].map((count) => (
+                  <button
+                    key={count}
+                    className={multiplayerCount === count ? "selected" : ""}
+                    onClick={() => selectMultiplayerCount(count)}
+                  >
+                    <strong>{count}</strong>
+                    <span>{tr(count === 2 ? "players" : "players", "人")}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="multiplayer-bindings">
+                {multiplayerBindings.map((binding, index) => {
+                  const nextBinding = multiplayerBindings.findIndex(
+                    (value) => value === null,
+                  );
+                  return (
+                    <button
+                      key={index}
+                      className={index === nextBinding ? "listening" : ""}
+                      style={{ "--player-color": PLAYER_COLORS[index] } as CSSProperties}
+                      onClick={() => {
+                        setMultiplayerBindings((current) =>
+                          current.map((value, itemIndex) =>
+                            itemIndex === index ? null : value,
+                          ),
+                        );
+                        setMultiplayerBindingError("");
+                      }}
+                    >
+                      <span>{tr(`Player ${index + 1}`, `玩家 ${index + 1}`)}</span>
+                      <kbd>{binding ? formatKeyCode(binding) : index === nextBinding ? tr("PRESS A KEY", "请按键") : tr("WAITING", "等待中")}</kbd>
+                      <small>{binding ? tr("Click to rebind", "点击重新绑定") : tr("One unique key each", "每人使用不同按键")}</small>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className={`binding-feedback ${multiplayerBindingError ? "error" : ""}`} role="status">
+                {multiplayerBindingError ||
+                  (multiplayerBindings.every(Boolean)
+                    ? tr("Everyone is ready.", "所有人都准备好了。")
+                    : tr(
+                        `Waiting for Player ${multiplayerBindings.findIndex((binding) => binding === null) + 1}.`,
+                        `等待玩家 ${multiplayerBindings.findIndex((binding) => binding === null) + 1} 按键。`,
+                      ))}
+              </p>
+            </div>
+            <div className="action-row">
+              <button className="primary-action" disabled={multiplayerBindings.some((binding) => binding === null)} onClick={beginMultiplayerSession}>{tr("Start multiplayer", "开始多人游戏")} <span>→</span></button>
+              <button className="secondary-action" onClick={() => setScreen("home")}>{tr("Back home", "返回首页")}</button>
+            </div>
+          </section>
+        )}
+
+        {screen === "multiplayer-game" && multiplayerGame && (
+          <section className="game-view multiplayer-game-view">
+            <div className="game-toolbar">
+              <div><p className="eyebrow">{tr("MULTIPLAYER", "多人模式")}</p><strong>{formatDuration(multiplayerGame.session.activeSeconds * 1000)}</strong><small>{tr("active time", "有效时长")}</small></div>
+              <div className="game-actions">
+                <button onClick={() => setMultiplayerGame({ ...multiplayerGame, session: multiplayerGame.session.phase === "paused" ? resumeFishingSession(multiplayerGame.session) : pauseFishingSession(multiplayerGame.session) })}>{multiplayerGame.session.phase === "paused" ? tr("Resume", "继续") : tr("Pause", "暂停")}</button>
+                <button onClick={() => askMultiplayerTo("restart")}>{tr("Restart", "重新开始")}</button>
+                <button className="danger" onClick={() => askMultiplayerTo("finish")}>{tr("End match", "结束比赛")}</button>
+              </div>
+            </div>
+            <div className={`multiplayer-board players-${multiplayerGame.lanes.length}`}>
+              {multiplayerGame.lanes.map((multiplayerLane, index) => (
+                <MultiplayerLane
+                  key={multiplayerLane.id}
+                  lane={multiplayerLane}
+                  keyCode={multiplayerBindings[index]!}
+                  language={language}
+                />
+              ))}
+            </div>
+            {multiplayerGame.session.phase === "countdown" && <div className="modal-backdrop countdown" role="status"><div className="countdown-card"><p>{tr("GET READY", "准备")}</p><strong>{Math.max(1, Math.ceil(multiplayerGame.session.countdownSeconds))}</strong><span>{tr("Every lane opens when the count reaches zero.", "倒计时归零后，所有赛道同时开始。")}</span></div></div>}
+            {multiplayerGame.session.phase === "paused" && <div className="modal-backdrop"><div className="modal-card"><p className="eyebrow">{tr("LINES HELD", "鱼线已停")}</p><h2>{multiplayerGame.session.pauseReason === "manual" ? tr("Match paused", "比赛已暂停") : tr("Welcome back", "欢迎回来")}</h2><p>{tr("Every lane and the active timer are stopped.", "所有赛道和有效计时均已暂停。")}</p><button className="primary-action" onClick={() => setMultiplayerGame({ ...multiplayerGame, session: resumeFishingSession(multiplayerGame.session) })}>{tr("Resume match", "继续比赛")}</button></div></div>}
+            {multiplayerGame.session.phase === "confirming-exit" && <div className="modal-backdrop"><div className="modal-card"><p className="eyebrow">{tr("CONFIRM ACTION", "确认操作")}</p><h2>{multiplayerPendingAction === "restart" ? tr("Start over?", "重新开始？") : tr("End this match?", "结束本场比赛？")}</h2><p>{multiplayerPendingAction === "restart" ? tr("Every player's current score will be discarded.", "所有玩家的当前得分都会被放弃。") : tr("The match ends for everyone. Multiplayer results are not saved to Solo History.", "比赛将为所有玩家结束；多人结果不会保存到单人历史。")}</p><div className="action-row"><button className="primary-action" onClick={confirmMultiplayerAction}>{multiplayerPendingAction === "restart" ? tr("Restart now", "立即重新开始") : tr("End match", "结束比赛")}</button><button className="secondary-action" onClick={cancelMultiplayerConfirmation}>{tr("Keep fishing", "继续钓鱼")}</button></div></div></div>}
           </section>
         )}
 
