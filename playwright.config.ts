@@ -15,14 +15,25 @@ export default defineConfig({
         ...devices["Desktop Chrome"],
         ...(process.env.CI ? {} : { channel: "chrome" as const }),
       },
+      testIgnore: /mobile\.spec\.ts/,
     },
     {
       name: "firefox",
       use: { ...devices["Desktop Firefox"] },
+      testIgnore: /mobile\.spec\.ts/,
     },
     {
       name: "webkit",
       use: { ...devices["Desktop Safari"] },
+      testIgnore: /mobile\.spec\.ts/,
+    },
+    {
+      name: "mobile-chromium",
+      use: {
+        ...devices["Pixel 7"],
+        ...(process.env.CI ? {} : { channel: "chrome" as const }),
+      },
+      testMatch: /mobile\.spec\.ts/,
     },
   ],
   webServer: {
