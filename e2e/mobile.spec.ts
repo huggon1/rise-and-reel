@@ -84,6 +84,18 @@ test("plays Solo Fishing with an on-screen reel control", async ({ page }) => {
   await expectNoHorizontalOverflow(page);
 });
 
+test("explains the desktop boundary for 2D Fishing", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 740 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "2D Fishing" }).click();
+
+  await expect(page.getByText("Open on desktop")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /Start 2D Fishing/ }),
+  ).toHaveCount(0);
+  await expectNoHorizontalOverflow(page);
+});
+
 test("starts every multiplayer size without keyboard bindings", async ({
   page,
 }) => {

@@ -7,6 +7,7 @@ All notable changes to Rise & Reel are documented here.
 ### Added
 
 - Desktop Solo Fishing with one configurable keyboard control.
+- Desktop two-player 2D Fishing with independent X/Y controls and a shared catch zone.
 - A short preparation countdown followed by unlimited active play.
 - Explicit pause, resume, restart confirmation, and confirmed session ending.
 - English and Chinese Tide Map interface with browser-local preferences.

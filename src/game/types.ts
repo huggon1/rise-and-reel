@@ -45,3 +45,32 @@ export interface LaneState extends PlayerDefinition {
   catchProgress: number;
   lastReward: number;
 }
+
+export type ControlAxis = "x" | "y";
+
+export interface CooperativePlayerDefinition extends PlayerDefinition {
+  axis: ControlAxis;
+}
+
+export interface CooperativeState {
+  players: [CooperativePlayerDefinition, CooperativePlayerDefinition];
+  score: number;
+  catches: number;
+  streak: number;
+  phase: RoundPhase;
+  phaseTime: number;
+  fish: FishDefinition;
+  fishX: number;
+  fishY: number;
+  fishVelocityX: number;
+  fishVelocityY: number;
+  fishTargetX: number;
+  fishTargetY: number;
+  targetTime: number;
+  zoneX: number;
+  zoneY: number;
+  zoneVelocityX: number;
+  zoneVelocityY: number;
+  catchProgress: number;
+  lastReward: number;
+}

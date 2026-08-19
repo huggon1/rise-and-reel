@@ -8,7 +8,11 @@ import {
 } from "react";
 import { GAME_CONFIG } from "./game/config";
 import { isFishOverlappingBar } from "./game/engine";
-import { createLogicalInput, playerControlId } from "./game/input";
+import {
+  axisControlId,
+  createLogicalInput,
+  playerControlId,
+} from "./game/input";
 import {
   cancelGroupExit,
   confirmGroupExit,
@@ -18,6 +22,12 @@ import {
   type SessionPauseReason,
 } from "./game/session";
 import type { FishId, LaneState } from "./game/types";
+import {
+  advanceCooperativeGame,
+  createCooperativeGame,
+  type CooperativeGameState,
+} from "./cooperative/game";
+import { isFishInsideCooperativeZone } from "./cooperative/engine";
 import {
   advanceMultiplayerGame,
   createMultiplayerGame,
@@ -43,7 +53,9 @@ type Screen =
   | "summary"
   | "history"
   | "multiplayer-setup"
-  | "multiplayer-game";
+  | "multiplayer-game"
+  | "cooperative-setup"
+  | "cooperative-game";
 type SaveState = "idle" | "saving" | "saved" | "error";
 type PendingAction = "finish" | "restart" | null;
 
@@ -235,6 +247,74 @@ function TouchControls({
   );
 }
 
+function CooperativeBoard({
+  game,
+  bindings,
+  language,
+}: {
+  game: CooperativeGameState;
+  bindings: readonly (string | null)[];
+  language: Language;
+}) {
+  const round = game.round;
+  const overlap = isFishInsideCooperativeZone(round);
+  const catchPercent = Math.round(round.catchProgress * 100);
+  const zone = GAME_CONFIG.cooperative.zone;
+  const tr = (english: string, chinese: string) =>
+    language === "en" ? english : chinese;
+
+  return (
+    <div className="cooperative-board">
+      <aside className="cooperative-sidebar">
+        <div className="cooperative-team-stats">
+          <div><span>{tr("Team score", "团队得分")}</span><strong>{round.score}</strong></div>
+          <div><span>{tr("Caught", "捕获")}</span><strong>{round.catches}</strong></div>
+          <div><span>{tr("Streak", "连击")}</span><strong>{round.streak}</strong></div>
+        </div>
+        <div className="cooperative-controls">
+          {round.players.map((player, index) => (
+            <article key={player.axis} style={{ "--player-color": PLAYER_COLORS[index] } as CSSProperties}>
+              <span>{tr(`Player ${player.id}`, `玩家 ${player.id}`)} · {player.axis.toUpperCase()}</span>
+              <kbd>{bindings[index] ? formatKeyCode(bindings[index]!) : "—"}</kbd>
+              <small>{player.axis === "x"
+                ? tr("Hold right · release left", "按住向右 · 松开向左")
+                : tr("Hold up · release down", "按住向上 · 松开向下")}</small>
+            </article>
+          ))}
+        </div>
+        <div className="cooperative-meter">
+          <div><span>{tr("Shared catch meter", "共享捕获进度")}</span><strong>{catchPercent}%</strong></div>
+          <div className="meter-track" role="progressbar" aria-label={tr("Shared catch meter", "共享捕获进度")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={catchPercent}>
+            <span style={{ width: `${catchPercent}%` }} />
+          </div>
+        </div>
+      </aside>
+      <div className="cooperative-water" style={{ "--fish-color": round.fish.color } as CSSProperties}>
+        <div className="water-lines" />
+        <div
+          className={`cooperative-zone ${overlap ? "overlap" : ""}`}
+          style={{
+            left: `${round.zoneX * 100}%`,
+            top: `${round.zoneY * 100}%`,
+            width: `${zone.width * 100}%`,
+            height: `${zone.height * 100}%`,
+          }}
+        ><span className="axis-handle x">X</span><span className="axis-handle y">Y</span></div>
+        <div
+          className={`fish-marker cooperative-fish ${overlap ? "overlap" : ""}`}
+          style={{ left: `${round.fishX * 100}%`, top: `${round.fishY * 100}%` }}
+          aria-label={fishNames[round.fish.id][language]}
+        >{round.fish.symbol}</div>
+        {round.phase !== "fishing" && (
+          <div className={`round-callout ${round.phase}`}><strong>{round.phase === "caught"
+            ? tr(`Team catch! +${round.lastReward}`, `团队捕获！+${round.lastReward}`)
+            : tr("Escaped", "逃脱")}</strong></div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const initialPreferences = useMemo(() => {
     cleanupKnownLegacyStorage(window.localStorage);
@@ -264,6 +344,14 @@ export default function App() {
   const [multiplayerGame, setMultiplayerGame] =
     useState<MultiplayerGameState | null>(null);
   const [multiplayerPendingAction, setMultiplayerPendingAction] =
+    useState<PendingAction>(null);
+  const [cooperativeBindings, setCooperativeBindings] = useState<
+    [string | null, string | null]
+  >([null, null]);
+  const [cooperativeBindingError, setCooperativeBindingError] = useState("");
+  const [cooperativeGame, setCooperativeGame] =
+    useState<CooperativeGameState | null>(null);
+  const [cooperativePendingAction, setCooperativePendingAction] =
     useState<PendingAction>(null);
   const [prefersTouchControls, setPrefersTouchControls] = useState(() =>
     window.matchMedia("(pointer: coarse)").matches,
@@ -310,7 +398,11 @@ export default function App() {
   }, [clearHeldControls]);
 
   useEffect(() => {
-    if (screen === "game" || screen === "multiplayer-game") {
+    if (
+      screen === "game" ||
+      screen === "multiplayer-game" ||
+      screen === "cooperative-game"
+    ) {
       window.scrollTo({ top: 0, left: 0 });
     }
   }, [screen]);
@@ -366,6 +458,35 @@ export default function App() {
     return () => window.removeEventListener("keydown", bind);
   }, [multiplayerBindings, screen, tr]);
 
+  useEffect(() => {
+    if (screen !== "cooperative-setup" || prefersTouchControls) return;
+    const bind = (event: KeyboardEvent) => {
+      if (event.repeat || BLOCKED_BINDINGS.has(event.code)) return;
+      const openIndex = cooperativeBindings.findIndex(
+        (binding) => binding === null,
+      );
+      if (openIndex === -1) return;
+      event.preventDefault();
+      if (cooperativeBindings.includes(event.code)) {
+        setCooperativeBindingError(
+          tr(
+            `${formatKeyCode(event.code)} is already assigned.`,
+            `${formatKeyCode(event.code)} 已被绑定。`,
+          ),
+        );
+        return;
+      }
+      setCooperativeBindings((current) =>
+        current.map((binding, index) =>
+          index === openIndex ? event.code : binding,
+        ) as [string | null, string | null],
+      );
+      setCooperativeBindingError("");
+    };
+    window.addEventListener("keydown", bind);
+    return () => window.removeEventListener("keydown", bind);
+  }, [cooperativeBindings, prefersTouchControls, screen, tr]);
+
   const interruptSession = useCallback((reason: SessionPauseReason) => {
     clearHeldControls();
     setGame((current) =>
@@ -379,6 +500,21 @@ export default function App() {
     (reason: SessionPauseReason) => {
       clearHeldControls();
       setMultiplayerGame((current) =>
+        current
+          ? {
+              ...current,
+              session: pauseFishingSession(current.session, reason),
+            }
+          : current,
+      );
+    },
+    [clearHeldControls],
+  );
+
+  const interruptCooperativeSession = useCallback(
+    (reason: SessionPauseReason) => {
+      clearHeldControls();
+      setCooperativeGame((current) =>
         current
           ? {
               ...current,
@@ -456,6 +592,43 @@ export default function App() {
     screen,
   ]);
 
+  const cooperativeKeySignature = cooperativeBindings.join("|");
+  useEffect(() => {
+    if (screen !== "cooperative-game") return;
+    const codes = new Set(cooperativeBindings.filter(Boolean) as string[]);
+    const down = (event: KeyboardEvent) => {
+      if (!codes.has(event.code)) return;
+      event.preventDefault();
+      pressedKeys.current.add(event.code);
+    };
+    const up = (event: KeyboardEvent) => {
+      if (!codes.has(event.code)) return;
+      event.preventDefault();
+      pressedKeys.current.delete(event.code);
+    };
+    const blur = () => interruptCooperativeSession("window-blur");
+    const visibility = () => {
+      if (document.hidden) interruptCooperativeSession("page-hidden");
+    };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    window.addEventListener("blur", blur);
+    document.addEventListener("visibilitychange", visibility);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+      window.removeEventListener("blur", blur);
+      document.removeEventListener("visibilitychange", visibility);
+      clearHeldControls();
+    };
+  }, [
+    clearHeldControls,
+    cooperativeBindings,
+    cooperativeKeySignature,
+    interruptCooperativeSession,
+    screen,
+  ]);
+
   const phase = game?.session.phase;
   useEffect(() => {
     if (screen !== "game" || (phase !== "countdown" && phase !== "active")) {
@@ -514,6 +687,38 @@ export default function App() {
     return () => cancelAnimationFrame(frame);
   }, [multiplayerBindings, multiplayerPhase, screen]);
 
+  const cooperativePhase = cooperativeGame?.session.phase;
+  useEffect(() => {
+    if (
+      screen !== "cooperative-game" ||
+      (cooperativePhase !== "countdown" && cooperativePhase !== "active")
+    ) {
+      return;
+    }
+    let frame = 0;
+    let previous = performance.now();
+    const tick = (now: number) => {
+      const elapsed = (now - previous) / 1000;
+      previous = now;
+      setCooperativeGame((current) => {
+        if (!current) return current;
+        const controls = cooperativeBindings.flatMap((binding, index) =>
+          binding && pressedKeys.current.has(binding)
+            ? [axisControlId(index === 0 ? "x" : "y")]
+            : [],
+        );
+        return advanceCooperativeGame(
+          current,
+          createLogicalInput(controls),
+          elapsed,
+        );
+      });
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [cooperativeBindings, cooperativePhase, screen]);
+
   const beginSession = useCallback(() => {
     sessionIdentity.current = { id: createSessionId(), startedAt: new Date() };
     clearHeldControls();
@@ -539,6 +744,17 @@ export default function App() {
     setMultiplayerPendingAction(null);
     setScreen("multiplayer-game");
   }, [clearHeldControls, multiplayerBindings, prefersTouchControls]);
+
+  const beginCooperativeSession = useCallback(() => {
+    if (
+      prefersTouchControls ||
+      cooperativeBindings.some((binding) => binding === null)
+    ) return;
+    clearHeldControls();
+    setCooperativeGame(createCooperativeGame());
+    setCooperativePendingAction(null);
+    setScreen("cooperative-game");
+  }, [clearHeldControls, cooperativeBindings, prefersTouchControls]);
 
   const selectMultiplayerCount = (count: number) => {
     setMultiplayerCount(count);
@@ -627,6 +843,13 @@ export default function App() {
           ? { ...current, session: requestGroupExit(current.session) }
           : current,
       );
+    } else if (screen === "cooperative-game") {
+      setCooperativePendingAction("finish");
+      setCooperativeGame((current) =>
+        current
+          ? { ...current, session: requestGroupExit(current.session) }
+          : current,
+      );
     } else {
       setScreen("home");
     }
@@ -663,6 +886,37 @@ export default function App() {
     setScreen("home");
   };
 
+  const askCooperativeTo = (action: Exclude<PendingAction, null>) => {
+    clearHeldControls();
+    setCooperativePendingAction(action);
+    setCooperativeGame((current) =>
+      current
+        ? { ...current, session: requestGroupExit(current.session) }
+        : current,
+    );
+  };
+
+  const cancelCooperativeConfirmation = () => {
+    setCooperativePendingAction(null);
+    setCooperativeGame((current) =>
+      current
+        ? { ...current, session: cancelGroupExit(current.session) }
+        : current,
+    );
+  };
+
+  const confirmCooperativeAction = () => {
+    if (!cooperativeGame || !cooperativePendingAction) return;
+    if (cooperativePendingAction === "restart") {
+      beginCooperativeSession();
+      return;
+    }
+    clearHeldControls();
+    setCooperativeGame(null);
+    setCooperativePendingAction(null);
+    setScreen("home");
+  };
+
   const navItems = [
     { id: "home" as const, label: tr("Home", "首页"), action: navHome },
     {
@@ -673,7 +927,9 @@ export default function App() {
           ? askTo("restart")
           : screen === "multiplayer-game"
             ? askMultiplayerTo("finish")
-            : setScreen("setup"),
+            : screen === "cooperative-game"
+              ? askCooperativeTo("finish")
+              : setScreen("setup"),
     },
     {
       id: "multiplayer-setup" as const,
@@ -683,7 +939,21 @@ export default function App() {
           ? askTo("finish")
           : screen === "multiplayer-game"
             ? askMultiplayerTo("restart")
-            : setScreen("multiplayer-setup"),
+            : screen === "cooperative-game"
+              ? askCooperativeTo("finish")
+              : setScreen("multiplayer-setup"),
+    },
+    {
+      id: "cooperative-setup" as const,
+      label: tr("2D Fishing", "2D 模式"),
+      action: () =>
+        screen === "game"
+          ? askTo("finish")
+          : screen === "multiplayer-game"
+            ? askMultiplayerTo("finish")
+            : screen === "cooperative-game"
+              ? askCooperativeTo("restart")
+              : setScreen("cooperative-setup"),
     },
     {
       id: "history" as const,
@@ -693,7 +963,9 @@ export default function App() {
           ? askTo("finish")
           : screen === "multiplayer-game"
             ? askMultiplayerTo("finish")
-            : showHistory(),
+            : screen === "cooperative-game"
+              ? askCooperativeTo("finish")
+              : showHistory(),
     },
   ];
 
@@ -702,13 +974,15 @@ export default function App() {
       ? "setup"
       : screen === "multiplayer-game"
         ? "multiplayer-setup"
-        : screen;
+        : screen === "cooperative-game"
+          ? "cooperative-setup"
+          : screen;
   const lane = game?.lane;
   const overlap = lane ? isFishOverlappingBar(lane) : false;
   const catchPercent = lane ? Math.round(lane.catchProgress * 100) : 0;
 
   return (
-    <main className={`tide-shell ${screen === "game" || screen === "multiplayer-game" ? "playing" : ""}`}>
+    <main className={`tide-shell ${screen === "game" || screen === "multiplayer-game" || screen === "cooperative-game" ? "playing" : ""}`}>
       <aside className="tide-rail">
         <button className="brand-lockup" onClick={navHome} aria-label="Rise & Reel">
           <span className="brand-mark">R</span>
@@ -758,6 +1032,7 @@ export default function App() {
               <div className="action-row">
                 <button className="primary-action" onClick={() => setScreen("setup")}>{tr("Set up Solo Fishing", "设置单人钓鱼")} <span>→</span></button>
                 <button className="secondary-action" onClick={() => setScreen("multiplayer-setup")}>{tr("Play with 2–4 people", "2–4 人一起玩")}</button>
+                <button className="secondary-action" onClick={() => setScreen("cooperative-setup")}>{tr("Play 2D together", "双人 2D 协作")}</button>
                 <button className="quiet-action" onClick={showHistory}>{tr("View history", "查看历史")}</button>
               </div>
             </div>
@@ -860,6 +1135,59 @@ export default function App() {
           </section>
         )}
 
+        {screen === "cooperative-setup" && (
+          <section className="content setup-view">
+            <div className="page-heading">
+              <p className="eyebrow">{tr("2D FISHING SETUP", "2D 模式设置")}</p>
+              <h1>{tr("Split the axes. Share the catch.", "分工控制双轴，共享一次捕获。")}</h1>
+              <p>{prefersTouchControls
+                ? tr("2D Fishing uses two keyboard controls and is available on desktop.", "2D 模式需要两个键盘按键，仅支持桌面端。")
+                : tr("Bind one unique key to each axis. Both players steer one shared catch zone.", "为两个轴分别绑定不同按键，两名玩家共同控制一个捕获区。")}</p>
+            </div>
+            {prefersTouchControls ? (
+              <div className="desktop-only-card">
+                <strong>{tr("Open on desktop", "请在桌面端打开")}</strong>
+                <p>{tr("The shared X/Y controls require a physical keyboard.", "共享的 X/Y 轴控制需要实体键盘。")}</p>
+              </div>
+            ) : (
+              <div className="multiplayer-setup-card">
+                <div className="multiplayer-bindings cooperative-bindings">
+                  {cooperativeBindings.map((binding, index) => {
+                    const nextBinding = cooperativeBindings.findIndex((value) => value === null);
+                    const axis = index === 0 ? "X" : "Y";
+                    return (
+                      <button
+                        key={axis}
+                        className={index === nextBinding ? "listening" : ""}
+                        style={{ "--player-color": PLAYER_COLORS[index] } as CSSProperties}
+                        onClick={() => {
+                          setCooperativeBindings((current) => current.map((value, itemIndex) => itemIndex === index ? null : value) as [string | null, string | null]);
+                          setCooperativeBindingError("");
+                        }}
+                      >
+                        <span>{tr(`Player ${index + 1} · ${axis} axis`, `玩家 ${index + 1} · ${axis} 轴`)}</span>
+                        <kbd>{binding ? formatKeyCode(binding) : index === nextBinding ? tr("PRESS A KEY", "请按键") : tr("WAITING", "等待中")}</kbd>
+                        <small>{index === 0
+                          ? tr("Hold right · release left", "按住向右 · 松开向左")
+                          : tr("Hold up · release down", "按住向上 · 松开向下")}</small>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className={`binding-feedback ${cooperativeBindingError ? "error" : ""}`} role="status">
+                  {cooperativeBindingError || (cooperativeBindings.every(Boolean)
+                    ? tr("Both axes are ready.", "两个轴均已准备好。")
+                    : tr(`Waiting for Player ${cooperativeBindings.findIndex((binding) => binding === null) + 1}.`, `等待玩家 ${cooperativeBindings.findIndex((binding) => binding === null) + 1} 按键。`))}
+                </p>
+              </div>
+            )}
+            <div className="action-row">
+              {!prefersTouchControls && <button className="primary-action" disabled={cooperativeBindings.some((binding) => binding === null)} onClick={beginCooperativeSession}>{tr("Start 2D Fishing", "开始 2D 模式")} <span>→</span></button>}
+              <button className="secondary-action" onClick={() => setScreen("home")}>{tr("Back home", "返回首页")}</button>
+            </div>
+          </section>
+        )}
+
         {screen === "multiplayer-game" && multiplayerGame && (
           <section className={`game-view multiplayer-game-view ${prefersTouchControls ? "touch-enabled" : ""}`}>
             <div className="game-toolbar">
@@ -892,6 +1220,23 @@ export default function App() {
             {multiplayerGame.session.phase === "countdown" && <div className="modal-backdrop countdown" role="status"><div className="countdown-card"><p>{tr("GET READY", "准备")}</p><strong>{Math.max(1, Math.ceil(multiplayerGame.session.countdownSeconds))}</strong><span>{tr("Every lane opens when the count reaches zero.", "倒计时归零后，所有赛道同时开始。")}</span></div></div>}
             {multiplayerGame.session.phase === "paused" && <div className="modal-backdrop"><div className="modal-card"><p className="eyebrow">{tr("LINES HELD", "鱼线已停")}</p><h2>{multiplayerGame.session.pauseReason === "manual" ? tr("Match paused", "比赛已暂停") : tr("Welcome back", "欢迎回来")}</h2><p>{tr("Every lane and the active timer are stopped.", "所有赛道和有效计时均已暂停。")}</p><button className="primary-action" onClick={() => setMultiplayerGame({ ...multiplayerGame, session: resumeFishingSession(multiplayerGame.session) })}>{tr("Resume match", "继续比赛")}</button></div></div>}
             {multiplayerGame.session.phase === "confirming-exit" && <div className="modal-backdrop"><div className="modal-card"><p className="eyebrow">{tr("CONFIRM ACTION", "确认操作")}</p><h2>{multiplayerPendingAction === "restart" ? tr("Start over?", "重新开始？") : tr("End this match?", "结束本场比赛？")}</h2><p>{multiplayerPendingAction === "restart" ? tr("Every player's current score will be discarded.", "所有玩家的当前得分都会被放弃。") : tr("The match ends for everyone. Multiplayer results are not saved to Solo History.", "比赛将为所有玩家结束；多人结果不会保存到单人历史。")}</p><div className="action-row"><button className="primary-action" onClick={confirmMultiplayerAction}>{multiplayerPendingAction === "restart" ? tr("Restart now", "立即重新开始") : tr("End match", "结束比赛")}</button><button className="secondary-action" onClick={cancelMultiplayerConfirmation}>{tr("Keep fishing", "继续钓鱼")}</button></div></div></div>}
+          </section>
+        )}
+
+        {screen === "cooperative-game" && cooperativeGame && (
+          <section className="game-view cooperative-game-view">
+            <div className="game-toolbar">
+              <div><p className="eyebrow">{tr("2D FISHING", "2D 模式")}</p><strong>{formatDuration(cooperativeGame.session.activeSeconds * 1000)}</strong><small>{tr("active time", "有效时长")}</small></div>
+              <div className="game-actions">
+                <button onClick={() => cooperativeGame.session.phase === "paused" ? setCooperativeGame({ ...cooperativeGame, session: resumeFishingSession(cooperativeGame.session) }) : interruptCooperativeSession("manual")}>{cooperativeGame.session.phase === "paused" ? tr("Resume", "继续") : tr("Pause", "暂停")}</button>
+                <button onClick={() => askCooperativeTo("restart")}>{tr("Restart", "重新开始")}</button>
+                <button className="danger" onClick={() => askCooperativeTo("finish")}>{tr("End session", "结束会话")}</button>
+              </div>
+            </div>
+            <CooperativeBoard game={cooperativeGame} bindings={cooperativeBindings} language={language} />
+            {cooperativeGame.session.phase === "countdown" && <div className="modal-backdrop countdown" role="status"><div className="countdown-card"><p>{tr("GET READY", "准备")}</p><strong>{Math.max(1, Math.ceil(cooperativeGame.session.countdownSeconds))}</strong><span>{tr("The shared water opens when the count reaches zero.", "倒计时归零后，共享水域开启。")}</span></div></div>}
+            {cooperativeGame.session.phase === "paused" && <div className="modal-backdrop"><div className="modal-card"><p className="eyebrow">{tr("LINES HELD", "鱼线已停")}</p><h2>{cooperativeGame.session.pauseReason === "manual" ? tr("2D Fishing paused", "2D 模式已暂停") : tr("Welcome back", "欢迎回来")}</h2><p>{tr("Both axes and the active timer are stopped.", "两个轴和有效计时均已暂停。")}</p><button className="primary-action" onClick={() => setCooperativeGame({ ...cooperativeGame, session: resumeFishingSession(cooperativeGame.session) })}>{tr("Resume together", "一起继续")}</button></div></div>}
+            {cooperativeGame.session.phase === "confirming-exit" && <div className="modal-backdrop"><div className="modal-card"><p className="eyebrow">{tr("CONFIRM ACTION", "确认操作")}</p><h2>{cooperativePendingAction === "restart" ? tr("Start over?", "重新开始？") : tr("End this 2D session?", "结束本次 2D 会话？")}</h2><p>{cooperativePendingAction === "restart" ? tr("The team's current score will be discarded.", "团队当前得分将被放弃。") : tr("The shared session ends. 2D results are not saved to Solo History.", "共享会话将结束；2D 结果不会保存到单人历史。")}</p><div className="action-row"><button className="primary-action" onClick={confirmCooperativeAction}>{cooperativePendingAction === "restart" ? tr("Restart now", "立即重新开始") : tr("End session", "结束会话")}</button><button className="secondary-action" onClick={cancelCooperativeConfirmation}>{tr("Keep fishing", "继续钓鱼")}</button></div></div></div>}
           </section>
         )}
 
