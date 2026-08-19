@@ -4,7 +4,7 @@
 
 ### One key each. No clock. Your tide, your pace.
 
-A calm desktop fishing game for solo sessions or local 2–4 player showdowns.
+A calm fishing game for solo sessions, local 2–4 player showdowns, or two-player 2D cooperation.
 
 [🌊 Play Rise & Reel](https://riseandreel.huggon1.com/) · [简体中文](README.zh-CN.md)
 
@@ -32,13 +32,14 @@ No frantic countdown. No account setup. Just you, the water, and the next catch.
 - 🎮 A complete desktop Solo Fishing session.
 - ⌨️ One configurable keyboard control.
 - 👥 Local competitive Multiplayer for 2–4 players on one keyboard.
+- 🧭 Two-player 2D Fishing with one shared catch zone and one keyboard control per axis.
 - 🌍 English and Simplified Chinese interfaces.
 - ⏸️ Pause, resume, restart confirmation, and a deliberate session ending.
 - 📊 Session summaries with active time, score, catches, escapes, and best streak.
 - 🏆 Personal bests, lifetime score, and the latest 100 sessions saved in your browser.
 - 🧪 Automated coverage in Chromium, Firefox, and WebKit.
 
-Version 0.1.0 is designed for desktop keyboard play. Multiplayer matches use independent lanes and are not written to Solo History. Cooperative 2D fishing, mobile touch controls, cloud sync, accounts, session recovery, and background music remain outside this release.
+Multiplayer matches use independent lanes. 2D Fishing is a desktop-keyboard mode where one player steers the X axis and another steers the Y axis. Multiplayer and 2D results are not written to Solo History. Cloud sync, accounts, session recovery, and background music remain outside this release.
 
 ## 🕹️ Controls
 
@@ -47,6 +48,8 @@ Version 0.1.0 is designed for desktop keyboard play. Multiplayer matches use ind
 | Raise the catch zone | Hold your selected key |
 | Lower the catch zone | Release the key |
 | Start a local match | Choose 2–4 players and bind a unique key for each |
+| Steer the 2D zone horizontally | Player 1 holds to move right and releases to move left |
+| Steer the 2D zone vertically | Player 2 holds to move up and releases to move down |
 | Pause or continue | Use the on-screen control |
 | Finish a session or match | Choose the on-screen end action and confirm |
 
@@ -59,7 +62,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173`, then choose **Solo Fishing** or **Multiplayer**. Multiplayer supports 2–4 people sharing one keyboard with one unique key each.
+Open `http://localhost:5173`, then choose **Solo Fishing**, **Multiplayer**, or **2D Fishing**. Multiplayer supports 2–4 people sharing one keyboard; 2D Fishing uses two unique keyboard controls on desktop.
 
 ## ✅ Verify the build
 
