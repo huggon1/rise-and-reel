@@ -655,7 +655,8 @@ h1, h2, p, figure { margin: 0; }
 
 @media (pointer: coarse) and (orientation: landscape) and (max-height: 500px) {
   .game-view.touch-enabled .session-stats { grid-template-columns: repeat(5,1fr); }
-  .game-view.touch-enabled .session-stats > div { min-height: 38px; }
+  .game-view.touch-enabled .session-stats > div,
+  .game-view.touch-enabled .session-stats > div:first-child { min-height: 38px; padding-block: 4px; }
   .game-view.touch-enabled .multiplayer-lane > header { padding: 3px 5px; }
   .game-view.touch-enabled .multiplayer-stats span { padding: 2px 4px; }
   .game-view.touch-enabled .multiplayer-water { margin: 3px; }
