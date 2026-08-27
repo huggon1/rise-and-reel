@@ -8,6 +8,65 @@ const expectNoHorizontalOverflow = async (page: Page) => {
   expect(dimensions.content).toBeLessThanOrEqual(dimensions.viewport);
 };
 
+const expectEntireSoloStageVisible = async (page: Page) => {
+  const layout = await page.evaluate(() => {
+    const toolbar = document.querySelector(".game-toolbar")!.getBoundingClientRect();
+    const board = document.querySelector(".solo-board")!.getBoundingClientRect();
+    const stats = document.querySelector(".session-stats")!.getBoundingClientRect();
+    const water = document.querySelector(".water-column")!.getBoundingClientRect();
+    const meter = document.querySelector(".catch-meter")!.getBoundingClientRect();
+    const controls = document.querySelector(".touch-controls")!.getBoundingClientRect();
+    const marker = document.querySelector(".fish-marker")!.getBoundingClientRect();
+    const catchZone = document.querySelector(".catch-zone")!.getBoundingClientRect();
+    const fishImage = document.querySelector<HTMLImageElement>(".fish-sprite img")!;
+
+    return {
+      scrollY: window.scrollY,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      toolbarTop: toolbar.top,
+      toolbarBottom: toolbar.bottom,
+      boardTop: board.top,
+      boardBottom: board.bottom,
+      boardWidth: board.width,
+      statsTop: stats.top,
+      statsBottom: stats.bottom,
+      waterTop: water.top,
+      waterBottom: water.bottom,
+      waterHeight: water.height,
+      meterTop: meter.top,
+      meterBottom: meter.bottom,
+      controlsTop: controls.top,
+      controlsBottom: controls.bottom,
+      markerHeight: marker.height,
+      catchZoneHeight: catchZone.height,
+      fishImageComplete: fishImage.complete,
+      fishImageWidth: fishImage.naturalWidth,
+      fishImageHeight: fishImage.naturalHeight,
+    };
+  });
+
+  const minimumWaterHeight =
+    layout.viewportWidth > layout.viewportHeight ? 125 : 180;
+
+  expect(layout.scrollY).toBe(0);
+  expect(layout.boardWidth).toBeGreaterThanOrEqual(layout.viewportWidth - 20);
+  expect(layout.toolbarTop).toBeGreaterThanOrEqual(0);
+  expect(layout.boardTop).toBeGreaterThanOrEqual(layout.toolbarBottom);
+  expect(layout.statsTop).toBeGreaterThanOrEqual(layout.boardTop);
+  expect(layout.statsBottom).toBeLessThanOrEqual(layout.waterTop);
+  expect(layout.waterHeight).toBeGreaterThanOrEqual(minimumWaterHeight);
+  expect(layout.waterBottom).toBeLessThanOrEqual(layout.boardBottom);
+  expect(layout.meterTop).toBeGreaterThanOrEqual(layout.waterTop);
+  expect(layout.meterBottom).toBeLessThanOrEqual(layout.boardBottom);
+  expect(layout.boardBottom).toBeLessThanOrEqual(layout.controlsTop);
+  expect(layout.controlsBottom).toBeLessThanOrEqual(layout.viewportHeight);
+  expect(layout.markerHeight).toBeLessThanOrEqual(layout.catchZoneHeight);
+  expect(layout.fishImageComplete).toBe(true);
+  expect(layout.fishImageWidth).toBeGreaterThan(0);
+  expect(layout.fishImageHeight).toBeGreaterThan(0);
+};
+
 const expectEntireMultiplayerStageVisible = async (page: Page) => {
   const layout = await page.evaluate(() => {
     const toolbar = document.querySelector(".game-toolbar")!.getBoundingClientRect();
@@ -65,6 +124,8 @@ test("plays Solo Fishing with an on-screen reel control", async ({ page }) => {
   await expect(page.getByText("TOUCH READY")).toBeVisible();
   await page.getByRole("button", { name: /Start fishing/ }).click();
   await expect(page.getByText("GET READY")).toBeHidden({ timeout: 5_000 });
+  await expect(page.locator('[data-session-phase="active"]')).toBeVisible();
+  await expectEntireSoloStageVisible(page);
 
   const reel = page.getByRole("button", { name: "Reel control" });
   await expect(reel).toBeVisible();
@@ -82,6 +143,14 @@ test("plays Solo Fishing with an on-screen reel control", async ({ page }) => {
   });
   await expect(reel).toHaveAttribute("aria-pressed", "false");
   await expectNoHorizontalOverflow(page);
+
+  await page.setViewportSize({ width: 320, height: 568 });
+  await expectNoHorizontalOverflow(page);
+  await expectEntireSoloStageVisible(page);
+
+  await page.setViewportSize({ width: 740, height: 320 });
+  await expectNoHorizontalOverflow(page);
+  await expectEntireSoloStageVisible(page);
 });
 
 test("explains the desktop boundary for 2D Fishing", async ({ page }) => {
