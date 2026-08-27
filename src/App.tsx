@@ -6,8 +6,8 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import { GAME_CONFIG } from "./game/config";
-import { isFishOverlappingBar } from "./game/engine";
+import lakeHero from "./assets/game/environments/lake-hero.webp";
+import { CooperativeWater, LaneWater } from "./components/FishingWater";
 import {
   axisControlId,
   createLogicalInput,
@@ -21,13 +21,13 @@ import {
   resumeFishingSession,
   type SessionPauseReason,
 } from "./game/session";
+import { FISH_ASSET_URLS } from "./game/presentation";
 import type { FishId, LaneState } from "./game/types";
 import {
   advanceCooperativeGame,
   createCooperativeGame,
   type CooperativeGameState,
 } from "./cooperative/game";
-import { isFishInsideCooperativeZone } from "./cooperative/engine";
 import {
   advanceMultiplayerGame,
   createMultiplayerGame,
@@ -122,7 +122,6 @@ function MultiplayerLane({
   language: Language;
   compact?: boolean;
 }) {
-  const overlap = isFishOverlappingBar(lane);
   const catchPercent = Math.round(lane.catchProgress * 100);
   const localizedPlayer =
     language === "en" ? `Player ${lane.id}` : `玩家 ${lane.id}`;
@@ -146,32 +145,15 @@ function MultiplayerLane({
         <span title={language === "en" ? "Caught" : "捕获"}>{statLabels[1]}<strong>{lane.catches}</strong></span>
         <span title={language === "en" ? "Escaped" : "逃脱"}>{statLabels[2]}<strong>{lane.escapes}</strong></span>
       </div>
-      <div className="multiplayer-water">
-        <div className="water-lines" />
-        <div
-          className={`catch-zone ${overlap ? "overlap" : ""}`}
-          style={{
-            top: `${lane.barY * 100}%`,
-            height: `${GAME_CONFIG.bar.height * 100}%`,
-          }}
-        ><span /></div>
-        <div
-          className={`fish-marker ${overlap ? "overlap" : ""}`}
-          style={{ top: `${lane.fishY * 100}%` }}
-          aria-label={fishNames[lane.fish.id][language]}
-        >{lane.fish.symbol}</div>
-        {lane.phase !== "fishing" && (
-          <div className={`round-callout ${lane.phase}`}>
-            <strong>
-              {lane.phase === "caught"
-                ? language === "en"
-                  ? `Caught! +${lane.lastReward}`
-                  : `捕获！+${lane.lastReward}`
-                : language === "en" ? "Escaped" : "逃脱"}
-            </strong>
-          </div>
-        )}
-      </div>
+      <LaneWater
+        lane={lane}
+        variant="multiplayer"
+        fishLabel={fishNames[lane.fish.id][language]}
+        caughtMessage={language === "en" ? `Caught! +${lane.lastReward}` : `捕获！+${lane.lastReward}`}
+        escapedMessage={language === "en" ? "Escaped" : "逃脱"}
+        playerColor={PLAYER_COLORS[lane.id - 1]}
+        sceneIndex={lane.id - 1}
+      />
       <div className="multiplayer-meter">
         <span>{language === "en" ? "Catch meter" : "捕获进度"}</span>
         <strong>{catchPercent}%</strong>
@@ -237,6 +219,17 @@ function TouchControls({
             onPointerUp={release}
             onPointerCancel={release}
             onLostPointerCapture={release}
+            onKeyDown={(event) => {
+              if (event.key !== " " && event.key !== "Enter") return;
+              event.preventDefault();
+              onHoldChange(playerId, true);
+            }}
+            onKeyUp={(event) => {
+              if (event.key !== " " && event.key !== "Enter") return;
+              event.preventDefault();
+              release();
+            }}
+            onBlur={release}
           >
             {!isSolo && <span>{language === "en" ? `P${playerId}` : `玩家 ${playerId}`}</span>}
             <strong>{language === "en" ? useCompactLabel ? "HOLD" : "HOLD TO REEL" : useCompactLabel ? "按住" : "按住收线"}</strong>
@@ -257,9 +250,7 @@ function CooperativeBoard({
   language: Language;
 }) {
   const round = game.round;
-  const overlap = isFishInsideCooperativeZone(round);
   const catchPercent = Math.round(round.catchProgress * 100);
-  const zone = GAME_CONFIG.cooperative.zone;
   const tr = (english: string, chinese: string) =>
     language === "en" ? english : chinese;
 
@@ -289,28 +280,12 @@ function CooperativeBoard({
           </div>
         </div>
       </aside>
-      <div className="cooperative-water" style={{ "--fish-color": round.fish.color } as CSSProperties}>
-        <div className="water-lines" />
-        <div
-          className={`cooperative-zone ${overlap ? "overlap" : ""}`}
-          style={{
-            left: `${round.zoneX * 100}%`,
-            top: `${round.zoneY * 100}%`,
-            width: `${zone.width * 100}%`,
-            height: `${zone.height * 100}%`,
-          }}
-        ><span className="axis-handle x">X</span><span className="axis-handle y">Y</span></div>
-        <div
-          className={`fish-marker cooperative-fish ${overlap ? "overlap" : ""}`}
-          style={{ left: `${round.fishX * 100}%`, top: `${round.fishY * 100}%` }}
-          aria-label={fishNames[round.fish.id][language]}
-        >{round.fish.symbol}</div>
-        {round.phase !== "fishing" && (
-          <div className={`round-callout ${round.phase}`}><strong>{round.phase === "caught"
-            ? tr(`Team catch! +${round.lastReward}`, `团队捕获！+${round.lastReward}`)
-            : tr("Escaped", "逃脱")}</strong></div>
-        )}
-      </div>
+      <CooperativeWater
+        round={round}
+        fishLabel={fishNames[round.fish.id][language]}
+        caughtMessage={tr(`Team catch! +${round.lastReward}`, `团队捕获！+${round.lastReward}`)}
+        escapedMessage={tr("Escaped", "逃脱")}
+      />
     </div>
   );
 }
@@ -368,6 +343,13 @@ export default function App() {
       language === "en" ? english : chinese,
     [language],
   );
+
+  useEffect(() => {
+    FISH_ASSET_URLS.forEach((src) => {
+      const image = new Image();
+      image.src = src;
+    });
+  }, []);
 
   const setTouchControlHeld = useCallback((playerId: number, held: boolean) => {
     if (pressedTouchPlayers.current.has(playerId) === held) return;
@@ -978,7 +960,6 @@ export default function App() {
           ? "cooperative-setup"
           : screen;
   const lane = game?.lane;
-  const overlap = lane ? isFishOverlappingBar(lane) : false;
   const catchPercent = lane ? Math.round(lane.catchProgress * 100) : 0;
 
   return (
@@ -993,6 +974,7 @@ export default function App() {
             <button
               key={item.id}
               className={activeNav === item.id ? "active" : ""}
+              aria-current={activeNav === item.id ? "page" : undefined}
               onClick={item.action}
             >
               <span />{item.label}
@@ -1016,30 +998,88 @@ export default function App() {
         <header className="topline">
           <div className="status-dot">{tr("LOCAL WATERS OPEN", "本地水域开放")}</div>
           <div className="language-switch" aria-label={tr("Language", "语言")}>
-            <button className={language === "en" ? "active" : ""} onClick={() => setLanguage("en")}>EN</button>
-            <button className={language === "zh" ? "active" : ""} onClick={() => setLanguage("zh")}>中文</button>
+            <button className={language === "en" ? "active" : ""} aria-pressed={language === "en"} onClick={() => setLanguage("en")}>EN</button>
+            <button className={language === "zh" ? "active" : ""} aria-pressed={language === "zh"} onClick={() => setLanguage("zh")}>中文</button>
           </div>
         </header>
 
         {screen === "home" && (
           <section className="content home-view">
-            <div className="hero-copy">
-              <p className="eyebrow">{tr("YOUR TIDE, YOUR PACE", "跟随自己的潮汐")}</p>
-              <h1>{tr("Settle in. Keep the line moving.", "坐稳，抛线，慢慢钓。")}</h1>
-              <p>{prefersTouchControls
-                ? tr("One control. No clock. Catch what you can, then end the session when you are ready.", "一个触控按钮，不限时间。想钓多久就钓多久，准备好时再结束会话。")
-                : tr("One key. No clock. Catch what you can, then end the session when you are ready.", "一个按键，不限时间。想钓多久就钓多久，准备好时再结束会话。")}</p>
-              <div className="action-row">
-                <button className="primary-action" onClick={() => setScreen("setup")}>{tr("Set up Solo Fishing", "设置单人钓鱼")} <span>→</span></button>
-                <button className="secondary-action" onClick={() => setScreen("multiplayer-setup")}>{tr("Play with 2–4 people", "2–4 人一起玩")}</button>
-                <button className="secondary-action" onClick={() => setScreen("cooperative-setup")}>{tr("Play 2D together", "双人 2D 协作")}</button>
-                <button className="quiet-action" onClick={showHistory}>{tr("View history", "查看历史")}</button>
+            <div className="home-hero">
+              <div className="hero-copy">
+                <p className="eyebrow">{tr("YOUR TIDE, YOUR PACE", "跟随自己的潮汐")}</p>
+                <h1>{tr("Settle in. Keep the line moving.", "坐稳，抛线，慢慢钓。")}</h1>
+                <p>{prefersTouchControls
+                  ? tr("One control. No clock. Follow the fish, feel the pull, and stay as long as you like.", "一个触控按钮，不限时间。跟住鱼的节奏，感受鱼线拉力，想钓多久就钓多久。")
+                  : tr("One key. No clock. Follow the fish, feel the pull, and stay as long as you like.", "一个按键，不限时间。跟住鱼的节奏，感受鱼线拉力，想钓多久就钓多久。")}</p>
+                <div className="hero-note">
+                  <span aria-hidden="true" />
+                  <p>{tr("Four fish. Three ways to play. One quiet lake.", "四种鱼，三种玩法，同一片安静水域。")}</p>
+                </div>
               </div>
+              <figure className="lake-window">
+                <img
+                  src={lakeHero}
+                  width="1280"
+                  height="853"
+                  alt={tr(
+                    "A pixel-art angler casts into a sunset lake above a lively underwater world.",
+                    "像素画中的钓手在落日湖畔抛线，水下鱼群游过。",
+                  )}
+                />
+                <span className="hero-waterline" aria-hidden="true" />
+                <span className="hero-bobber" aria-hidden="true" />
+                <figcaption>
+                  <span>{tr("SUNSET WATER", "落日水域")}</span>
+                  <strong>{tr("LOCAL PLAY · NO CLOCK", "本地游玩 · 不限时间")}</strong>
+                </figcaption>
+              </figure>
             </div>
-            <div className="tide-cards">
-              <article><span>01</span><strong>{prefersTouchControls ? tr("Use one touch control", "使用一个触控按钮") : tr("Bind one key", "绑定一个按键")}</strong><p>{tr("Hold to rise. Release to fall.", "按住上升，松开下落。")}</p></article>
-              <article><span>02</span><strong>{tr("Fish without a limit", "不限时钓鱼")}</strong><p>{tr("Pause whenever the water needs to wait.", "需要离开时，随时暂停。")}</p></article>
-              <article><span>03</span><strong>{tr("Leave together", "整组离开")}</strong><p>{tr("Confirm the end and keep a local summary.", "确认结束，并在本地保存总结。")}</p></article>
+            <div className="mode-deck" aria-label={tr("Choose a fishing mode", "选择钓鱼模式")}>
+              <button
+                className="mode-card solo-mode"
+                aria-label={tr("Set up Solo Fishing", "设置单人钓鱼")}
+                onClick={() => setScreen("setup")}
+              >
+                <span className="mode-diagram solo" aria-hidden="true"><i /><b /></span>
+                <small>{tr("SOLO WATER", "单人水域")}</small>
+                <strong>{tr("Hold the line yourself.", "自己掌住鱼线。")}</strong>
+                <p>{tr("One control moves the net. Follow every dart and dive.", "一个控制移动捕获网，跟住每一次冲刺与下潜。")}</p>
+                <span className="mode-action">{tr("Set up Solo Fishing", "设置单人钓鱼")} →</span>
+              </button>
+              <button
+                className="mode-card multiplayer-mode"
+                aria-label={tr("Play with 2–4 people", "2–4 人一起玩")}
+                onClick={() => setScreen("multiplayer-setup")}
+              >
+                <span className="mode-diagram multiplayer" aria-hidden="true"><i /><i /><i /><i /></span>
+                <small>{tr("SHARED DOCK", "共享码头")}</small>
+                <strong>{tr("Race on the same keyboard.", "在同一键盘上竞速。")}</strong>
+                <p>{tr("Two to four independent lines, one screen, no timer.", "二至四条独立鱼线，共享屏幕，不限时间。")}</p>
+                <span className="mode-action">{tr("Play with 2–4 people", "2–4 人一起玩")} →</span>
+              </button>
+              <button
+                className="mode-card cooperative-mode"
+                aria-label={tr("Play 2D together", "双人 2D 协作")}
+                onClick={() => setScreen("cooperative-setup")}
+              >
+                <span className="mode-diagram cooperative" aria-hidden="true"><i /><b /></span>
+                <small>{tr("TWO-PERSON NET", "双人协作网")}</small>
+                <strong>{tr("Split the axes. Share the catch.", "分工控制双轴，共享捕获。")}</strong>
+                <p>{tr("One player steers across. The other controls depth.", "一人控制水平，一人控制深度。")}</p>
+                <span className="mode-action">{tr("Play 2D together", "双人 2D 协作")} →</span>
+              </button>
+              <button
+                className="mode-card history-mode"
+                aria-label={tr("View history", "查看历史")}
+                onClick={showHistory}
+              >
+                <span className="mode-diagram history" aria-hidden="true"><i /><i /><i /></span>
+                <small>{tr("LOCAL LOGBOOK", "本地钓鱼日志")}</small>
+                <strong>{tr("Keep the sessions that matter.", "留下值得记住的会话。")}</strong>
+                <p>{tr("Personal bests and the latest 100 solo sessions stay here.", "个人最佳与最近 100 次单人会话保存在这里。")}</p>
+                <span className="mode-action">{tr("View history", "查看历史")} →</span>
+              </button>
             </div>
           </section>
         )}
@@ -1082,6 +1122,7 @@ export default function App() {
                   <button
                     key={count}
                     className={multiplayerCount === count ? "selected" : ""}
+                    aria-pressed={multiplayerCount === count}
                     onClick={() => selectMultiplayerCount(count)}
                   >
                     <strong>{count}</strong>
@@ -1189,7 +1230,7 @@ export default function App() {
         )}
 
         {screen === "multiplayer-game" && multiplayerGame && (
-          <section className={`game-view multiplayer-game-view ${prefersTouchControls ? "touch-enabled" : ""}`}>
+          <section className={`game-view multiplayer-game-view ${prefersTouchControls ? "touch-enabled" : ""}`} data-session-phase={multiplayerGame.session.phase}>
             <div className="game-toolbar">
               <div><p className="eyebrow">{tr("MULTIPLAYER", "多人模式")}</p><strong>{formatDuration(multiplayerGame.session.activeSeconds * 1000)}</strong><small>{tr("active time", "有效时长")}</small></div>
               <div className="game-actions">
@@ -1224,7 +1265,7 @@ export default function App() {
         )}
 
         {screen === "cooperative-game" && cooperativeGame && (
-          <section className="game-view cooperative-game-view">
+          <section className="game-view cooperative-game-view" data-session-phase={cooperativeGame.session.phase}>
             <div className="game-toolbar">
               <div><p className="eyebrow">{tr("2D FISHING", "2D 模式")}</p><strong>{formatDuration(cooperativeGame.session.activeSeconds * 1000)}</strong><small>{tr("active time", "有效时长")}</small></div>
               <div className="game-actions">
@@ -1241,13 +1282,32 @@ export default function App() {
         )}
 
         {screen === "game" && game && lane && (
-          <section className={`game-view ${prefersTouchControls ? "touch-enabled" : ""}`}>
+          <section className={`game-view ${prefersTouchControls ? "touch-enabled" : ""}`} data-session-phase={game.session.phase}>
             <div className="game-toolbar">
               <div><p className="eyebrow">{tr("SOLO FISHING", "单人钓鱼")}</p><strong>{formatDuration(game.session.activeSeconds * 1000)}</strong><small>{tr("active time", "有效时长")}</small></div>
               <div className="game-actions">
                 <button onClick={() => game.session.phase === "paused" ? setGame({ ...game, session: resumeFishingSession(game.session) }) : interruptSession("manual")}>{game.session.phase === "paused" ? tr("Resume", "继续") : tr("Pause", "暂停")}</button>
                 <button onClick={() => askTo("restart")}>{tr("Restart", "重新开始")}</button>
                 <button className="danger" onClick={() => askTo("finish")}>{tr("End session", "结束会话")}</button>
+              </div>
+            </div>
+            <div className="solo-board">
+              <aside className="session-stats">
+                <div><span>{tr("Session score", "会话得分")}</span><strong>{lane.score}</strong></div>
+                <div><span>{tr("Caught", "捕获")}</span><strong>{lane.catches}</strong></div>
+                <div><span>{tr("Escaped", "逃脱")}</span><strong>{lane.escapes}</strong></div>
+                <div><span>{tr("Best streak", "最佳连击")}</span><strong>{lane.maxStreak}</strong></div>
+                <div className="fish-now"><span>{tr("In the water", "当前鱼种")}</span><strong>{fishNames[lane.fish.id][language]}</strong><i style={{ background: lane.fish.color }} /></div>
+              </aside>
+              <div className="water-wrap">
+                <LaneWater
+                  lane={lane}
+                  variant="solo"
+                  fishLabel={fishNames[lane.fish.id][language]}
+                  caughtMessage={tr(`Caught! +${lane.lastReward}`, `捕获！+${lane.lastReward}`)}
+                  escapedMessage={tr("Escaped", "逃脱")}
+                />
+                <div className="catch-meter"><div><span>{tr("Catch meter", "捕获进度")}</span><strong>{catchPercent}%</strong></div><div className="meter-track" role="progressbar" aria-label={tr("Catch meter", "捕获进度")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={catchPercent}><span style={{ width: `${catchPercent}%` }} /></div><small><kbd>{formatKeyCode(keyCode)}</kbd> {tr("hold to rise · release to fall", "按住上升 · 松开下落")}</small></div>
               </div>
             </div>
             {prefersTouchControls && (
@@ -1258,24 +1318,6 @@ export default function App() {
                 onHoldChange={setTouchControlHeld}
               />
             )}
-            <div className="solo-board">
-              <aside className="session-stats">
-                <div><span>{tr("Session score", "会话得分")}</span><strong>{lane.score}</strong></div>
-                <div><span>{tr("Caught", "捕获")}</span><strong>{lane.catches}</strong></div>
-                <div><span>{tr("Escaped", "逃脱")}</span><strong>{lane.escapes}</strong></div>
-                <div><span>{tr("Best streak", "最佳连击")}</span><strong>{lane.maxStreak}</strong></div>
-                <div className="fish-now"><span>{tr("In the water", "当前鱼种")}</span><strong>{fishNames[lane.fish.id][language]}</strong><i style={{ background: lane.fish.color }} /></div>
-              </aside>
-              <div className="water-wrap">
-                <div className="water-column" style={{ "--fish-color": lane.fish.color } as CSSProperties}>
-                  <div className="water-lines" />
-                  <div className={`catch-zone ${overlap ? "overlap" : ""}`} style={{ top: `${lane.barY * 100}%`, height: `${GAME_CONFIG.bar.height * 100}%` }}><span /></div>
-                  <div className={`fish-marker ${overlap ? "overlap" : ""}`} style={{ top: `${lane.fishY * 100}%` }} aria-label={fishNames[lane.fish.id][language]}>{lane.fish.symbol}</div>
-                  {lane.phase !== "fishing" && <div className={`round-callout ${lane.phase}`}><strong>{lane.phase === "caught" ? tr(`Caught! +${lane.lastReward}`, `捕获！+${lane.lastReward}`) : tr("Escaped", "逃脱")}</strong></div>}
-                </div>
-                <div className="catch-meter"><div><span>{tr("Catch meter", "捕获进度")}</span><strong>{catchPercent}%</strong></div><div className="meter-track"><span style={{ width: `${catchPercent}%` }} /></div><small><kbd>{formatKeyCode(keyCode)}</kbd> {tr("hold to rise · release to fall", "按住上升 · 松开下落")}</small></div>
-              </div>
-            </div>
             {game.session.phase === "countdown" && <div className="modal-backdrop countdown" role="status"><div className="countdown-card"><p>{tr("GET READY", "准备")}</p><strong>{Math.max(1, Math.ceil(game.session.countdownSeconds))}</strong><span>{tr("The water opens when the count reaches zero.", "倒计时归零后水域开启。")}</span></div></div>}
             {game.session.phase === "paused" && <div className="modal-backdrop"><div className="modal-card"><p className="eyebrow">{tr("LINES HELD", "鱼线已停")}</p><h2>{game.session.pauseReason === "manual" ? tr("Session paused", "会话已暂停") : tr("Welcome back", "欢迎回来")}</h2><p>{tr("Fishing and active time are stopped. Resume when you are ready.", "钓鱼进度和有效时长均已停止，准备好后再继续。")}</p><button className="primary-action" onClick={() => setGame({ ...game, session: resumeFishingSession(game.session) })}>{tr("Resume fishing", "继续钓鱼")}</button></div></div>}
             {game.session.phase === "confirming-exit" && <div className="modal-backdrop"><div className="modal-card"><p className="eyebrow">{tr("CONFIRM ACTION", "确认操作")}</p><h2>{pendingAction === "restart" ? tr("Start over?", "重新开始？") : tr("End this session?", "结束本次会话？")}</h2><p>{pendingAction === "restart" ? tr("Current progress will be discarded and a fresh preparation count will begin.", "当前进度将被放弃，并重新开始准备倒计时。") : tr("We will save this session and show its summary, even if no fish were caught.", "我们会保存本次会话并显示总结，即使没有捕获任何鱼。")}</p><div className="action-row"><button className="primary-action" onClick={confirmAction}>{pendingAction === "restart" ? tr("Restart now", "立即重新开始") : tr("End and save", "结束并保存")}</button><button className="secondary-action" onClick={cancelConfirmation}>{tr("Keep fishing", "继续钓鱼")}</button></div></div></div>}
