@@ -34,12 +34,13 @@ No frantic countdown. No account setup. Just you, the water, and the next catch.
 - 👥 Local competitive Multiplayer for 2–4 players on one keyboard.
 - 🧭 Two-player 2D Fishing with one shared catch zone and one keyboard control per axis.
 - 🌍 English and Simplified Chinese interfaces.
+- 🎵 Looping background music with a persistent on/off preference.
 - ⏸️ Pause, resume, restart confirmation, and a deliberate session ending.
 - 📊 Session summaries with active time, score, catches, escapes, and best streak.
 - 🏆 Personal bests, lifetime score, and the latest 100 sessions saved in your browser.
 - 🧪 Automated coverage in Chromium, Firefox, and WebKit.
 
-Multiplayer matches use independent lanes. 2D Fishing is a desktop-keyboard mode where one player steers the X axis and another steers the Y axis. Multiplayer and 2D results are not written to Solo History. Cloud sync, accounts, session recovery, and background music remain outside this release.
+Multiplayer matches use independent lanes. 2D Fishing is a desktop-keyboard mode where one player steers the X axis and another steers the Y axis. Multiplayer and 2D results are not written to Solo History. Cloud sync, accounts, and session recovery remain outside this release.
 
 ## 🕹️ Controls
 
@@ -72,10 +73,25 @@ npm run test:e2e
 npm run build
 ```
 
+## 🚢 Continuous deployment
+
+Pull requests run the full test, browser, build, and Cloudflare dry-run suite. After
+a commit reaches `main`, the same CI job preserves the verified `dist` artifact and
+a dependent deployment job publishes that exact artifact to Cloudflare Workers.
+
+Configure these secrets in the repository's `production` GitHub Environment:
+
+- `CLOUDFLARE_ACCOUNT_ID`: the account that owns the `rise-and-reel` Worker.
+- `CLOUDFLARE_API_TOKEN`: a token created from Cloudflare's **Edit Cloudflare
+  Workers** template and scoped to only the production account and zone.
+
+The deployment job cannot run until both secrets are configured. Credentials must
+never be committed to the repository.
+
 ## 🧰 Built with
 
 React 19 · TypeScript · Vite · Vitest · Playwright
 
 ## 📜 License
 
-Rise & Reel is available under the [MIT License](LICENSE). Version 0.1.0 contains no background music or separately licensed audio assets.
+Rise & Reel is available under the [MIT License](LICENSE). Background music provenance and its distribution statement are documented in [`src/assets/game/audio/README.md`](src/assets/game/audio/README.md).

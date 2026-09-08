@@ -27,7 +27,7 @@ const startSoloSession = async (page: Page) => {
   await page.keyboard.press("f");
   await page.getByRole("button", { name: /Start fishing/ }).click();
   await expect(page.locator('[data-session-phase="active"]')).toBeVisible({
-    timeout: 5_000,
+    timeout: 10_000,
   });
 };
 

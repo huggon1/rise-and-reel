@@ -7,6 +7,7 @@ import {
   type CSSProperties,
 } from "react";
 import lakeHero from "./assets/game/environments/lake-hero.webp";
+import backgroundMusic from "./assets/game/audio/beneath-the-willow-bend.mp3";
 import { CooperativeWater, LaneWater } from "./components/FishingWater";
 import {
   axisControlId,
@@ -290,6 +291,34 @@ function CooperativeBoard({
   );
 }
 
+function MusicToggle({
+  enabled,
+  language,
+  onToggle,
+}: {
+  enabled: boolean;
+  language: Language;
+  onToggle: () => void;
+}) {
+  const label = language === "en"
+    ? enabled ? "Turn music off" : "Turn music on"
+    : enabled ? "关闭音乐" : "开启音乐";
+
+  return (
+    <button
+      type="button"
+      className="music-toggle"
+      aria-label={label}
+      aria-pressed={enabled}
+      title={label}
+      onClick={onToggle}
+    >
+      <span aria-hidden="true">♪</span>
+      {language === "en" ? enabled ? "Music on" : "Music off" : enabled ? "音乐开启" : "音乐关闭"}
+    </button>
+  );
+}
+
 export default function App() {
   const initialPreferences = useMemo(() => {
     cleanupKnownLegacyStorage(window.localStorage);
@@ -303,6 +332,9 @@ export default function App() {
     initialPreferences.language,
   );
   const [keyCode, setKeyCode] = useState(initialPreferences.keyCode);
+  const [musicEnabled, setMusicEnabled] = useState(
+    initialPreferences.musicEnabled,
+  );
   const [screen, setScreen] = useState<Screen>("home");
   const [isBinding, setIsBinding] = useState(false);
   const [game, setGame] = useState<SoloGameState | null>(null);
@@ -337,6 +369,8 @@ export default function App() {
   const pressedKeys = useRef(new Set<string>());
   const pressedTouchPlayers = useRef(new Set<number>());
   const sessionIdentity = useRef<{ id: string; startedAt: Date } | null>(null);
+  const music = useRef<HTMLAudioElement | null>(null);
+  const musicStarted = useRef(false);
 
   const tr = useCallback(
     (english: string, chinese: string) =>
@@ -350,6 +384,53 @@ export default function App() {
       image.src = src;
     });
   }, []);
+
+  const playMusic = useCallback(() => {
+    if (!musicEnabled || document.hidden || !music.current) return;
+    musicStarted.current = true;
+    void music.current.play().catch(() => {
+      // Browsers may still block playback until a later user gesture.
+    });
+  }, [musicEnabled]);
+
+  const toggleMusic = useCallback(() => {
+    const next = !musicEnabled;
+    setMusicEnabled(next);
+    if (next && music.current) {
+      musicStarted.current = true;
+      void music.current.play().catch(() => {
+        // The next user gesture will retry if this browser blocks playback.
+      });
+    } else {
+      music.current?.pause();
+    }
+  }, [musicEnabled]);
+
+  useEffect(() => {
+    const startFromGesture = () => playMusic();
+    window.addEventListener("pointerdown", startFromGesture, { passive: true });
+    window.addEventListener("keydown", startFromGesture);
+    return () => {
+      window.removeEventListener("pointerdown", startFromGesture);
+      window.removeEventListener("keydown", startFromGesture);
+    };
+  }, [playMusic]);
+
+  useEffect(() => {
+    if (!musicEnabled) music.current?.pause();
+  }, [musicEnabled]);
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.hidden) {
+        music.current?.pause();
+      } else if (musicStarted.current) {
+        playMusic();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [playMusic]);
 
   const setTouchControlHeld = useCallback((playerId: number, held: boolean) => {
     if (pressedTouchPlayers.current.has(playerId) === held) return;
@@ -393,11 +474,11 @@ export default function App() {
     document.documentElement.lang = language === "en" ? "en" : "zh-CN";
     document.title = tr("Rise & Reel · Local Fishing", "Rise & Reel · 本地钓鱼");
     try {
-      savePreferences(window.localStorage, { language, keyCode });
+      savePreferences(window.localStorage, { language, keyCode, musicEnabled });
     } catch {
       // Preferences are optional and never block play.
     }
-  }, [keyCode, language, tr]);
+  }, [keyCode, language, musicEnabled, tr]);
 
   useEffect(() => {
     if (screen !== "setup" || !isBinding) return;
@@ -964,6 +1045,16 @@ export default function App() {
 
   return (
     <main className={`tide-shell ${screen === "game" || screen === "multiplayer-game" || screen === "cooperative-game" ? "playing" : ""}`}>
+      <audio
+        ref={music}
+        src={backgroundMusic}
+        loop
+        preload="auto"
+        aria-hidden="true"
+        onLoadedMetadata={(event) => {
+          event.currentTarget.volume = 0.25;
+        }}
+      />
       <aside className="tide-rail">
         <button className="brand-lockup" onClick={navHome} aria-label="Rise & Reel">
           <span className="brand-mark">R</span>
@@ -997,9 +1088,12 @@ export default function App() {
       <section className="tide-main">
         <header className="topline">
           <div className="status-dot">{tr("LOCAL WATERS OPEN", "本地水域开放")}</div>
-          <div className="language-switch" aria-label={tr("Language", "语言")}>
-            <button className={language === "en" ? "active" : ""} aria-pressed={language === "en"} onClick={() => setLanguage("en")}>EN</button>
-            <button className={language === "zh" ? "active" : ""} aria-pressed={language === "zh"} onClick={() => setLanguage("zh")}>中文</button>
+          <div className="topline-actions">
+            <MusicToggle enabled={musicEnabled} language={language} onToggle={toggleMusic} />
+            <div className="language-switch" aria-label={tr("Language", "语言")}>
+              <button className={language === "en" ? "active" : ""} aria-pressed={language === "en"} onClick={() => setLanguage("en")}>EN</button>
+              <button className={language === "zh" ? "active" : ""} aria-pressed={language === "zh"} onClick={() => setLanguage("zh")}>中文</button>
+            </div>
           </div>
         </header>
 
@@ -1234,6 +1328,7 @@ export default function App() {
             <div className="game-toolbar">
               <div><p className="eyebrow">{tr("MULTIPLAYER", "多人模式")}</p><strong>{formatDuration(multiplayerGame.session.activeSeconds * 1000)}</strong><small>{tr("active time", "有效时长")}</small></div>
               <div className="game-actions">
+                <MusicToggle enabled={musicEnabled} language={language} onToggle={toggleMusic} />
                 <button onClick={() => multiplayerGame.session.phase === "paused" ? setMultiplayerGame({ ...multiplayerGame, session: resumeFishingSession(multiplayerGame.session) }) : interruptMultiplayerSession("manual")}>{multiplayerGame.session.phase === "paused" ? tr("Resume", "继续") : tr("Pause", "暂停")}</button>
                 <button onClick={() => askMultiplayerTo("restart")}>{tr("Restart", "重新开始")}</button>
                 <button className="danger" onClick={() => askMultiplayerTo("finish")}>{tr("End match", "结束比赛")}</button>
@@ -1269,6 +1364,7 @@ export default function App() {
             <div className="game-toolbar">
               <div><p className="eyebrow">{tr("2D FISHING", "2D 模式")}</p><strong>{formatDuration(cooperativeGame.session.activeSeconds * 1000)}</strong><small>{tr("active time", "有效时长")}</small></div>
               <div className="game-actions">
+                <MusicToggle enabled={musicEnabled} language={language} onToggle={toggleMusic} />
                 <button onClick={() => cooperativeGame.session.phase === "paused" ? setCooperativeGame({ ...cooperativeGame, session: resumeFishingSession(cooperativeGame.session) }) : interruptCooperativeSession("manual")}>{cooperativeGame.session.phase === "paused" ? tr("Resume", "继续") : tr("Pause", "暂停")}</button>
                 <button onClick={() => askCooperativeTo("restart")}>{tr("Restart", "重新开始")}</button>
                 <button className="danger" onClick={() => askCooperativeTo("finish")}>{tr("End session", "结束会话")}</button>
@@ -1286,6 +1382,7 @@ export default function App() {
             <div className="game-toolbar">
               <div><p className="eyebrow">{tr("SOLO FISHING", "单人钓鱼")}</p><strong>{formatDuration(game.session.activeSeconds * 1000)}</strong><small>{tr("active time", "有效时长")}</small></div>
               <div className="game-actions">
+                <MusicToggle enabled={musicEnabled} language={language} onToggle={toggleMusic} />
                 <button onClick={() => game.session.phase === "paused" ? setGame({ ...game, session: resumeFishingSession(game.session) }) : interruptSession("manual")}>{game.session.phase === "paused" ? tr("Resume", "继续") : tr("Pause", "暂停")}</button>
                 <button onClick={() => askTo("restart")}>{tr("Restart", "重新开始")}</button>
                 <button className="danger" onClick={() => askTo("finish")}>{tr("End session", "结束会话")}</button>

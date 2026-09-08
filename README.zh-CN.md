@@ -36,12 +36,13 @@ Rise & Reel 把钓鱼变成简单而有手感的节奏挑战：
 - 👥 支持 2–4 人共用一个键盘的本地竞技多人模式。
 - 🧭 双人 2D 模式：共享一个捕获区，每人分别控制一个轴。
 - 🌍 英文与简体中文界面。
+- 🎵 可循环播放的背景音乐，并在当前浏览器保存开关偏好。
 - ⏸️ 暂停、继续、重新开始确认和明确的结束流程。
 - 📊 会话总结包含有效时长、分数、捕获数、逃脱数和最佳连击。
 - 🏆 在当前浏览器保存个人最佳、累计得分和最近 100 次会话。
 - 🧪 Chromium、Firefox 与 WebKit 自动化验证。
 
-多人比赛使用各自独立的钓鱼赛道。2D 模式仅支持桌面端键盘，由一名玩家控制 X 轴、另一名玩家控制 Y 轴。多人和 2D 结果均不会写入单人历史。云同步、账号、会话恢复和背景音乐仍不在此版本范围内。
+多人比赛使用各自独立的钓鱼赛道。2D 模式仅支持桌面端键盘，由一名玩家控制 X 轴、另一名玩家控制 Y 轴。多人和 2D 结果均不会写入单人历史。云同步、账号和会话恢复仍不在此版本范围内。
 
 ## 🕹️ 操作方式
 
@@ -74,10 +75,24 @@ npm run test:e2e
 npm run build
 ```
 
+## 🚢 Continuous deployment
+
+Pull request 会运行完整的测试、浏览器测试、构建和 Cloudflare dry-run。Commit
+进入 `main` 后，同一 CI job 会保存已经验证的 `dist` artifact，随后由依赖该
+job 的部署任务把同一个 artifact 发布到 Cloudflare Workers。
+
+需要在仓库的 `production` GitHub Environment 中配置以下 secrets：
+
+- `CLOUDFLARE_ACCOUNT_ID`：拥有 `rise-and-reel` Worker 的 Cloudflare account。
+- `CLOUDFLARE_API_TOKEN`：使用 Cloudflare 的 **Edit Cloudflare Workers**
+  template 创建，并且只授权 production account 和 zone 的 token。
+
+只有两个 secrets 都配置完成，部署任务才能运行。不要把 credentials 提交到仓库。
+
 ## 🧰 技术栈
 
 React 19 · TypeScript · Vite · Vitest · Playwright
 
 ## 📜 许可证
 
-Rise & Reel 采用 [MIT License](LICENSE)。v0.1.0 不包含背景音乐或需要单独授权的音频资源。
+Rise & Reel 采用 [MIT License](LICENSE)。背景音乐的生成来源与分发说明记录在 [`src/assets/game/audio/README.md`](src/assets/game/audio/README.md)。
