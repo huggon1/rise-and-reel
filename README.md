@@ -73,6 +73,21 @@ npm run test:e2e
 npm run build
 ```
 
+## 🚢 Continuous deployment
+
+Pull requests run the full test, browser, build, and Cloudflare dry-run suite. After
+a commit reaches `main`, the same CI job preserves the verified `dist` artifact and
+a dependent deployment job publishes that exact artifact to Cloudflare Workers.
+
+Configure these secrets in the repository's `production` GitHub Environment:
+
+- `CLOUDFLARE_ACCOUNT_ID`: the account that owns the `rise-and-reel` Worker.
+- `CLOUDFLARE_API_TOKEN`: a token created from Cloudflare's **Edit Cloudflare
+  Workers** template and scoped to only the production account and zone.
+
+The deployment job cannot run until both secrets are configured. Credentials must
+never be committed to the repository.
+
 ## 🧰 Built with
 
 React 19 · TypeScript · Vite · Vitest · Playwright

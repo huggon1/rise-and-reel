@@ -75,6 +75,20 @@ npm run test:e2e
 npm run build
 ```
 
+## 🚢 Continuous deployment
+
+Pull request 会运行完整的测试、浏览器测试、构建和 Cloudflare dry-run。Commit
+进入 `main` 后，同一 CI job 会保存已经验证的 `dist` artifact，随后由依赖该
+job 的部署任务把同一个 artifact 发布到 Cloudflare Workers。
+
+需要在仓库的 `production` GitHub Environment 中配置以下 secrets：
+
+- `CLOUDFLARE_ACCOUNT_ID`：拥有 `rise-and-reel` Worker 的 Cloudflare account。
+- `CLOUDFLARE_API_TOKEN`：使用 Cloudflare 的 **Edit Cloudflare Workers**
+  template 创建，并且只授权 production account 和 zone 的 token。
+
+只有两个 secrets 都配置完成，部署任务才能运行。不要把 credentials 提交到仓库。
+
 ## 🧰 技术栈
 
 React 19 · TypeScript · Vite · Vitest · Playwright
