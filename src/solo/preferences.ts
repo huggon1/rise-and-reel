@@ -14,11 +14,13 @@ export type Language = "en" | "zh";
 export interface SoloPreferences {
   language: Language;
   keyCode: string;
+  musicEnabled: boolean;
 }
 
 const DEFAULT_PREFERENCES: SoloPreferences = {
   language: "en",
   keyCode: "Space",
+  musicEnabled: true,
 };
 
 export const loadPreferences = (storage: BrowserStorage): SoloPreferences => {
@@ -35,7 +37,12 @@ export const loadPreferences = (storage: BrowserStorage): SoloPreferences => {
     ) {
       return DEFAULT_PREFERENCES;
     }
-    return { language: value.language, keyCode: value.keyCode };
+    return {
+      language: value.language,
+      keyCode: value.keyCode,
+      musicEnabled:
+        typeof value.musicEnabled === "boolean" ? value.musicEnabled : true,
+    };
   } catch {
     return DEFAULT_PREFERENCES;
   }

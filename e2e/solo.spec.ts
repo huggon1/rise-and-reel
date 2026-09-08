@@ -44,3 +44,27 @@ test("persists the Chinese language preference", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "坐稳，抛线，慢慢钓。" })).toBeVisible();
   await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
 });
+
+test("persists the background music preference across navigation and reload", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const music = page.locator("audio");
+  const toggle = page.getByRole("button", { name: "Turn music off" });
+
+  await expect(music).toHaveAttribute("loop", "");
+  await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  await toggle.click();
+  await expect(page.getByRole("button", { name: "Turn music on" })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+
+  await page.getByRole("button", { name: "Set up Solo Fishing" }).click();
+  await expect(page.getByRole("button", { name: "Turn music on" })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Turn music on" })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+});
