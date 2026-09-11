@@ -2988,3 +2988,35 @@ kbd {
     right: 0;
   }
 }
+/* Equal lane height at every touch player count, including during font swaps. */
+@media (pointer: coarse) and (max-width: 680px),
+  (pointer: coarse) and (orientation: landscape) and (max-height: 500px) {
+  .game-view.touch-enabled .multiplayer-lane > header > span {
+    line-height: 12px;
+    white-space: nowrap;
+  }
+  .game-view.touch-enabled .multiplayer-stats span {
+    line-height: 11px;
+  }
+  .game-view.touch-enabled .multiplayer-stats strong {
+    line-height: 12px;
+  }
+  .game-view.touch-enabled .multiplayer-meter > strong {
+    line-height: 15px;
+  }
+  .game-view.touch-enabled .touch-controls button {
+    height: clamp(46px, 9dvh, 66px);
+  }
+  .game-view.touch-enabled .touch-controls button span {
+    line-height: 11px;
+  }
+  .game-view.touch-enabled .touch-controls button strong {
+    line-height: 14px;
+    white-space: nowrap;
+  }
+}
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 500px) {
+  .game-view.touch-enabled .touch-controls button {
+    height: 40px;
+  }
+}

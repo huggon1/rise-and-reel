@@ -36,18 +36,22 @@ test("fits the title screen and loads both display alphabets locally", async ({
 test("the crafted net catches through real input and its motion pauses with play", async ({
   page,
 }, testInfo) => {
-  test.setTimeout(35_000);
+  test.setTimeout(60_000);
+  await page.clock.install();
   await page.addInitScript(() => {
     Math.random = () => 0.5;
   });
   await page.goto("/");
   await startSolo(page);
+  // Freeze between input samples so slow browser/CI rendering cannot skip a
+  // capture or distort the control loop. runFor still fires every animation frame.
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1_000));
   // Steer through the public keyboard control. Read only presentation coordinates.
   let held = false;
-  const deadline = Date.now() + 15_000;
-  while (
-    Date.now() < deadline &&
-    !(await page.locator(".round-callout.caught").count())
+  for (
+    let step = 0;
+    step < 240 && !(await page.locator(".round-callout.caught").count());
+    step++
   ) {
     const state = await page.evaluate(() => {
       const fish = document
@@ -64,7 +68,7 @@ test("the crafted net catches through real input and its motion pauses with play
       else await page.keyboard.up("f");
       held = shouldHold;
     }
-    await page.waitForTimeout(65);
+    await page.clock.runFor(64);
   }
   await page.keyboard.up("f");
   await expect(page.locator(".round-callout.caught")).toBeVisible();
@@ -74,7 +78,7 @@ test("the crafted net catches through real input and its motion pauses with play
     page.getByRole("heading", { name: "Session paused" }),
   ).toBeVisible();
   const before = await page.locator(".catch-zone").getAttribute("style");
-  await page.waitForTimeout(150);
+  await page.clock.runFor(150);
   expect(await page.locator(".catch-zone").getAttribute("style")).toBe(before);
   expect(
     await page

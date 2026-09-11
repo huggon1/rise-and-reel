@@ -59,6 +59,6 @@ Reproduce the capture evidence with:
 npx playwright test --config playwright.review.config.ts
 ```
 
-Recordings and screenshots appear in `test-results/art-review/`. The capture test steers through keyboard input while observing on-screen positions; it does not change the game state or inject scores. A fixed random source makes the demonstration repeatable.
+Recordings and screenshots appear in `test-results/art-review/`. The capture test steers through keyboard input while observing on-screen positions; it does not change the game state or inject scores. A fixed random source and a stepped browser frame clock make the control test repeatable without changing engine state.
 
 See [runtime art notes](../src/assets/game/README.md) for the asset map, font choices, and exact image-generation prompts.
