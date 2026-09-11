@@ -2810,19 +2810,34 @@ kbd {
 @media (pointer: coarse) and (max-width: 680px),
   (pointer: coarse) and (orientation: landscape) and (max-height: 500px) {
   .game-view.touch-enabled .game-toolbar {
+    width: 100%;
+    height: 48px;
+    gap: 4px;
     padding: 6px 8px;
     border-width: 1px;
   }
+  .game-view.touch-enabled .game-toolbar > div:first-child {
+    grid-template-columns: 1fr;
+    flex-shrink: 0;
+  }
   .game-toolbar .eyebrow {
     font-size: 8px;
+    line-height: 10px;
+    margin-bottom: 2px;
+    white-space: nowrap;
   }
   .game-toolbar small {
-    font-size: 8px;
+    display: none;
+  }
+  .game-view.touch-enabled .game-toolbar strong {
+    font-size: 18px;
+    line-height: 20px;
   }
   .game-actions button {
     min-height: 34px;
     font-size: 9px;
     padding: 5px 7px;
+    white-space: nowrap;
   }
   .game-actions .music-toggle {
     font-size: 0;
