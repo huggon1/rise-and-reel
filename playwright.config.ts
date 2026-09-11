@@ -3,6 +3,8 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
+  // Keep Linux software-rendered WebKit sessions from competing on CI runners.
+  workers: process.env.CI ? 1 : undefined,
   reporter: "line",
   use: {
     baseURL: "http://127.0.0.1:4173",
