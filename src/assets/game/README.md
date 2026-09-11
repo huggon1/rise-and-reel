@@ -14,7 +14,7 @@ Both environment plates were generated with the built-in OpenAI image generation
 
 `GameOrnaments.tsx` supplies a shared 32-unit tackle-icon family. `FishingWater.tsx` draws the net with instance-specific SVG weave/clip/gradient IDs, layered rope strokes, lashings, and knots. The simulation container stays fixed to the original bounds; only its interior weave responds to vertical movement and overlap. All decoration ignores pointer input. Gameplay coordinates and rules remain in the existing engines.
 
-Titles and score digits use self-hosted **Lilita One**; Chinese display glyphs use **ZCOOL KuaiLe**; body copy uses **Nunito** with platform Chinese sans-serif fallbacks. Fonts are distributed via Fontsource packages under their upstream licenses. No remote font service is required.
+Titles and score digits use self-hosted **Lilita One**; Chinese display glyphs use **ZCOOL KuaiLe**; body copy uses **Nunito** with platform Chinese sans-serif fallbacks. Fonts are distributed via Fontsource packages under their upstream licenses. No remote font service is required. The unmodified upstream license texts ship in `public/font-licenses/` and are copied into every production build.
 
 Environment motion is slow and peripheral. The net responds to motion and overlap, and catches use a reward plaque, radial sparks, bubbles, and the fish's reel-in animation. Gameplay animations pause with the session. Reduced-motion preferences disable decorative animation and transitions.
 
