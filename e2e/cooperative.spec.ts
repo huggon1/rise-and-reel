@@ -32,7 +32,7 @@ test("starts a two-player 2D session with unique axis controls", async ({
 
 test("rejects duplicate 2D axis bindings", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "2D Fishing" }).click();
+  await page.getByRole("button", { name: "Play 2D together" }).click();
 
   await page.keyboard.press("q");
   await page.keyboard.press("q");

@@ -1407,7 +1407,7 @@ export default function App() {
                   caughtMessage={tr(`Caught! +${lane.lastReward}`, `捕获！+${lane.lastReward}`)}
                   escapedMessage={tr("Escaped", "逃脱")}
                 />
-                <div className="catch-meter" data-pressure={catchPercent >= 76 ? "high" : catchPercent < 25 ? "low" : "steady"}><TackleIcon kind="reel" /><p className="meter-caption">{catchPercent >= 76 ? tr("ALMOST THERE!", "就快收网了！") : catchPercent < 25 ? tr("FOLLOW THE FISH", "快跟上它！") : tr("STEADY DOES IT", "稳住，跟着它") }</p><div><span>{tr("Catch meter", "捕获进度")}</span><strong>{catchPercent}<em>%</em></strong></div><div className="meter-track" role="progressbar" aria-label={tr("Catch meter", "捕获进度")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={catchPercent}><span style={{ width: `${catchPercent}%` }} /></div><small><kbd>{formatKeyCode(keyCode)}</kbd> {tr("hold ↑ · release ↓", "按住 ↑ · 松开 ↓")}</small></div>
+                <div className="catch-meter" data-pressure={catchPercent >= 76 ? "high" : catchPercent < 25 ? "low" : "steady"}><TackleIcon kind="reel" /><p className="meter-caption">{lane.phase === "caught" ? tr("NICE CATCH!", "漂亮，收网！") : lane.phase === "escaped" ? tr("TRY THE NEXT ONE", "下一条，继续！") : catchPercent >= 76 ? tr("ALMOST THERE!", "就快收网了！") : catchPercent < 25 ? tr("FOLLOW THE FISH", "快跟上它！") : tr("STEADY DOES IT", "稳住，跟着它") }</p><div><span>{tr("Catch meter", "捕获进度")}</span><strong>{catchPercent}<em>%</em></strong></div><div className="meter-track" role="progressbar" aria-label={tr("Catch meter", "捕获进度")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={catchPercent}><span style={{ width: `${catchPercent}%` }} /></div><small>{!prefersTouchControls && <kbd>{formatKeyCode(keyCode)}</kbd>} {prefersTouchControls ? tr("Hold button ↑ · release ↓", "按住按钮 ↑ · 松开 ↓") : tr("hold ↑ · release ↓", "按住 ↑ · 松开 ↓")}</small></div>
               </div>
             </div>
             {prefersTouchControls && (
@@ -1426,7 +1426,7 @@ export default function App() {
 
         {screen === "summary" && summary && (
           <section className="content summary-view">
-            <div className="page-heading"><p className="eyebrow">{tr("SESSION SUMMARY", "会话总结")}</p><h1>{isBest ? tr("A new personal best.", "新的个人最佳。") : tr("The tide settles.", "潮水渐平。")}</h1><p>{tr("Your completed Solo Fishing session is ready.", "你的单人钓鱼会话已经完成。")}</p></div>
+            <div className="page-heading"><TackleIcon kind="trophy" /><p className="eyebrow">{tr("SESSION SUMMARY", "会话总结")}</p><h1>{isBest ? tr("A new personal best.", "新的个人最佳。") : tr("The tide settles.", "潮水渐平。")}</h1><p>{tr("Your completed Solo Fishing session is ready.", "你的单人钓鱼会话已经完成。")}</p></div>
             <div className="summary-grid">
               <article><span>{tr("Active time", "有效时长")}</span><strong>{formatDuration(summary.activeDurationMs)}</strong></article>
               <article><span>{tr("Session score", "本次收获")}</span><strong>{summary.score}</strong></article>

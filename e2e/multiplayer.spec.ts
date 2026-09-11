@@ -33,7 +33,7 @@ test("starts a four-player match with unique same-keyboard controls", async ({
 
 test("rejects duplicate multiplayer key bindings", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Multiplayer" }).click();
+  await page.getByRole("button", { name: "Play with 2–4 people" }).click();
 
   await page.keyboard.press("q");
   await page.keyboard.press("q");

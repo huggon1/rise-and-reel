@@ -115,7 +115,7 @@ const expectEntireMultiplayerStageVisible = async (page: Page) => {
   }
 };
 
-test("plays Solo Fishing with an on-screen reel control", async ({ page }) => {
+test("plays Solo Fishing with an on-screen reel control", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 320, height: 740 });
   await page.goto("/");
   await expectNoHorizontalOverflow(page);
@@ -127,6 +127,9 @@ test("plays Solo Fishing with an on-screen reel control", async ({ page }) => {
   await expect(page.locator('[data-session-phase="active"]')).toBeVisible();
   await expectEntireSoloStageVisible(page);
 
+  await expect(page.locator(".catch-meter kbd")).toHaveCount(0);
+  await expect(page.getByText("Hold button ↑ · release ↓")).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath("solo-mobile.png") });
   const reel = page.getByRole("button", { name: "Reel control" });
   await expect(reel).toBeVisible();
   await reel.dispatchEvent("pointerdown", {
@@ -156,7 +159,7 @@ test("plays Solo Fishing with an on-screen reel control", async ({ page }) => {
 test("explains the desktop boundary for 2D Fishing", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 740 });
   await page.goto("/");
-  await page.getByRole("button", { name: "2D Fishing" }).click();
+  await page.getByRole("button", { name: "Play 2D together" }).click();
 
   await expect(page.getByText("Open on desktop")).toBeVisible();
   await expect(
