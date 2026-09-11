@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { memo, useId, type CSSProperties } from "react";
 import { GAME_CONFIG } from "../game/config";
 import { isFishOverlappingBar } from "../game/engine";
 import type {
@@ -75,7 +75,12 @@ function FishSprite({
   const isTwoDimensional = velocityX !== undefined;
   const facing = isTwoDimensional && velocityX < -0.015 ? -1 : 1;
   const pitch = isTwoDimensional
-    ? clamp(Math.atan2(velocityY, Math.max(Math.abs(velocityX), 0.08)) * 180 / Math.PI, -24, 24)
+    ? clamp(
+        (Math.atan2(velocityY, Math.max(Math.abs(velocityX), 0.08)) * 180) /
+          Math.PI,
+        -24,
+        24,
+      )
     : clamp(velocityY * 38, -20, 20);
   const style = {
     "--fish-facing": facing,
@@ -104,15 +109,123 @@ function FishSprite({
   );
 }
 
-function NetInterior() {
+// The frame stays exactly on the simulation bounds; only the loose weave moves.
+const NetInterior = memo(function NetInterior() {
+  const id = useId().replace(/:/g, "");
   return (
-    <span className="net-interior" aria-hidden="true">
-      <i className="net-knot start" />
-      <i className="net-knot end" />
-      <i className="net-glint" />
-    </span>
+    <svg
+      className="net-interior"
+      viewBox="0 0 240 120"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
+      <defs>
+        <pattern
+          id={`${id}-weave`}
+          width="24"
+          height="24"
+          patternUnits="userSpaceOnUse"
+        >
+          <path
+            d="m0 0 24 24M24 0 0 24"
+            fill="none"
+            stroke="#d2bc81"
+            strokeOpacity=".46"
+            strokeWidth="1.5"
+          />
+          <path
+            d="m0 1 23 23M24 1 1 24"
+            fill="none"
+            stroke="#243e36"
+            strokeOpacity=".4"
+            strokeWidth="1"
+          />
+          <rect
+            x="10.5"
+            y="10.5"
+            width="3"
+            height="3"
+            rx=".8"
+            fill="#e1c98c"
+            fillOpacity=".7"
+          />
+        </pattern>
+        <linearGradient id={`${id}-rim`} x2="0" y2="1">
+          <stop stopColor="#ffe5a2" />
+          <stop offset=".3" stopColor="#c79749" />
+          <stop offset=".65" stopColor="#f3d38d" />
+          <stop offset="1" stopColor="#98703b" />
+        </linearGradient>
+        <clipPath id={`${id}-clip`}>
+          <path d="M5 5H235V106L226 115H14L5 106Z" />
+        </clipPath>
+      </defs>
+      <path
+        className="net-water-fill"
+        d="M5 5H235V106L226 115H14L5 106Z"
+        fill="#ecd58f"
+        fillOpacity=".06"
+      />
+      <g clipPath={`url(#${id}-clip)`}>
+        <rect
+          className="net-weave"
+          x="0"
+          y="-12"
+          width="252"
+          height="156"
+          fill={`url(#${id}-weave)`}
+        />
+      </g>
+      <path
+        d="M5 5H235V106L226 115H14L5 106Z"
+        fill="none"
+        stroke="#172e2a"
+        strokeWidth="10"
+        vectorEffect="non-scaling-stroke"
+      />
+      <path
+        d="M5 5H235V106L226 115H14L5 106Z"
+        fill="none"
+        stroke={`url(#${id}-rim)`}
+        strokeWidth="6"
+        vectorEffect="non-scaling-stroke"
+      />
+      <path
+        d="M5 5H235V106L226 115H14L5 106Z"
+        fill="none"
+        stroke="#80613a"
+        strokeWidth="5"
+        strokeDasharray="1 5"
+        vectorEffect="non-scaling-stroke"
+        opacity=".65"
+      />
+      <path
+        d="M8 8H232M8 11V103M16 112H224"
+        fill="none"
+        stroke="#fff0b5"
+        strokeWidth="1"
+        opacity=".7"
+        vectorEffect="non-scaling-stroke"
+      />
+      {[14, 76, 164, 226].map((x) => (
+        <g key={x} transform={`translate(${x} 5)`}>
+          <rect
+            x="-5"
+            y="-4"
+            width="10"
+            height="9"
+            rx="2"
+            fill="#765432"
+            stroke="#302e21"
+            strokeWidth="1"
+          />
+          <path d="M-3-3v7M0-3v7M3-3v7" stroke="#f4dba0" strokeWidth="1.6" />
+        </g>
+      ))}
+      <path d="m114 1 6-6 6 6" stroke="#f3dda4" strokeWidth="3" fill="none" />
+    </svg>
   );
-}
+});
 
 function RoundFeedback({
   phase,
@@ -129,7 +242,11 @@ function RoundFeedback({
 
   return (
     <div className={`round-callout ${phase}`} style={position} role="status">
-      <span className="feedback-burst" aria-hidden="true" />
+      <span className="feedback-burst" aria-hidden="true">
+        {Array.from({ length: 8 }, (_, i) => (
+          <i key={i} style={{ "--ray": i } as CSSProperties} />
+        ))}
+      </span>
       <strong>{phase === "caught" ? caughtMessage : escapedMessage}</strong>
     </div>
   );
@@ -152,24 +269,30 @@ export function LaneWater({
   } as CSSProperties;
 
   return (
-    <div className={className} style={waterStyle}>
+    <div
+      className={className}
+      style={waterStyle}
+      data-round-phase={lane.phase}
+      data-net-motion={lane.barVelocity < -0.03 ? "rising" : "falling"}
+    >
       <UnderwaterScene sceneIndex={sceneIndex} />
       <div
         className="tension-line lane-tension-line"
         style={{ height: `${lane.barY * 100}%` }}
         aria-hidden="true"
-      ><span /></div>
+      >
+        <span />
+      </div>
       <div
         className={`catch-zone ${overlap ? "overlap" : ""}`}
         style={{
           top: `${lane.barY * 100}%`,
           height: `${GAME_CONFIG.bar.height * 100}%`,
         }}
-      ><NetInterior /></div>
-      <div
-        className="fish-marker"
-        style={{ top: `${lane.fishY * 100}%` }}
       >
+        <NetInterior />
+      </div>
+      <div className="fish-marker" style={{ top: `${lane.fishY * 100}%` }}>
         <FishSprite
           fish={lane.fish}
           phase={lane.phase}
@@ -182,7 +305,7 @@ export function LaneWater({
         phase={lane.phase}
         caughtMessage={caughtMessage}
         escapedMessage={escapedMessage}
-        position={{ top: `${lane.fishY * 100}%` }}
+        position={{ top: `${clamp(lane.fishY * 100, 22, 90)}%` }}
       />
     </div>
   );
@@ -200,6 +323,8 @@ export function CooperativeWater({
   return (
     <div
       className="cooperative-water"
+      data-round-phase={round.phase}
+      data-net-motion={round.zoneVelocityY < -0.03 ? "rising" : "falling"}
       style={{ "--fish-color": round.fish.color } as CSSProperties}
     >
       <UnderwaterScene wide />
@@ -207,12 +332,19 @@ export function CooperativeWater({
         className="tension-line axis-line x-axis-line"
         style={{ top: `${round.zoneY * 100}%`, width: `${round.zoneX * 100}%` }}
         aria-hidden="true"
-      ><span /></div>
+      >
+        <span />
+      </div>
       <div
         className="tension-line axis-line y-axis-line"
-        style={{ left: `${round.zoneX * 100}%`, height: `${round.zoneY * 100}%` }}
+        style={{
+          left: `${round.zoneX * 100}%`,
+          height: `${round.zoneY * 100}%`,
+        }}
         aria-hidden="true"
-      ><span /></div>
+      >
+        <span />
+      </div>
       <div
         className={`cooperative-zone ${overlap ? "overlap" : ""}`}
         style={{
@@ -243,7 +375,10 @@ export function CooperativeWater({
         phase={round.phase}
         caughtMessage={caughtMessage}
         escapedMessage={escapedMessage}
-        position={{ left: `${round.fishX * 100}%`, top: `${round.fishY * 100}%` }}
+        position={{
+          left: `${clamp(round.fishX * 100, 22, 78)}%`,
+          top: `${clamp(round.fishY * 100, 22, 90)}%`,
+        }}
       />
     </div>
   );

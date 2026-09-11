@@ -1,12 +1,9 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import "@fontsource/dm-mono/latin-400.css";
-import "@fontsource/dm-mono/latin-500.css";
-import "@fontsource/manrope/latin-400.css";
-import "@fontsource/manrope/latin-500.css";
-import "@fontsource/manrope/latin-600.css";
-import "@fontsource/manrope/latin-700.css";
-import "@fontsource/manrope/latin-800.css";
+import "@fontsource/lilita-one/latin-400.css";
+import "@fontsource/zcool-kuaile/chinese-simplified-400.css";
+import "@fontsource/nunito/latin-600.css";
+import "@fontsource/nunito/latin-800.css";
 import App from "./App";
 import "./styles.css";
 

@@ -6,7 +6,8 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import lakeHero from "./assets/game/environments/lake-hero.webp";
+import lakeHero from "./assets/game/environments/lakeside.webp";
+import { LakeAtmosphere, TackleIcon, WaterHeading } from "./components/GameOrnaments";
 import backgroundMusic from "./assets/game/audio/beneath-the-willow-bend.mp3";
 import { CooperativeWater, LaneWater } from "./components/FishingWater";
 import {
@@ -22,7 +23,7 @@ import {
   resumeFishingSession,
   type SessionPauseReason,
 } from "./game/session";
-import { FISH_ASSET_URLS } from "./game/presentation";
+import { FISH_ART, FISH_ASSET_URLS } from "./game/presentation";
 import type { FishId, LaneState } from "./game/types";
 import {
   advanceCooperativeGame,
@@ -281,12 +282,12 @@ function CooperativeBoard({
           </div>
         </div>
       </aside>
-      <CooperativeWater
+      <div className="cooperative-water-wrap"><WaterHeading title={tr("THE SHARED SHALLOWS", "双人浅湾")} subtitle={tr("TWO ANGLERS · ONE NET", "同心收网")} /><CooperativeWater
         round={round}
         fishLabel={fishNames[round.fish.id][language]}
         caughtMessage={tr(`Team catch! +${round.lastReward}`, `团队捕获！+${round.lastReward}`)}
         escapedMessage={tr("Escaped", "逃脱")}
-      />
+      /></div>
     </div>
   );
 }
@@ -1044,7 +1045,7 @@ export default function App() {
   const catchPercent = lane ? Math.round(lane.catchProgress * 100) : 0;
 
   return (
-    <main className={`tide-shell ${screen === "game" || screen === "multiplayer-game" || screen === "cooperative-game" ? "playing" : ""}`}>
+    <main lang={language === "zh" ? "zh-CN" : "en"} data-screen={screen} className={`tide-shell ${screen === "game" || screen === "multiplayer-game" || screen === "cooperative-game" ? "playing" : ""}`}>
       <audio
         ref={music}
         src={backgroundMusic}
@@ -1055,10 +1056,11 @@ export default function App() {
           event.currentTarget.volume = 0.25;
         }}
       />
+      <LakeAtmosphere />
       <aside className="tide-rail">
         <button className="brand-lockup" onClick={navHome} aria-label="Rise & Reel">
-          <span className="brand-mark">R</span>
-          <span><strong>Rise & Reel</strong><small>{tr("Tide Map", "潮汐地图")}</small></span>
+          <span className="brand-mark"><TackleIcon kind="reel" /></span>
+          <span><strong>Rise & Reel</strong><small>{tr("The lakeside club", "湖畔钓鱼俱乐部")}</small></span>
         </button>
         <nav aria-label={tr("Primary navigation", "主导航")}>
           {navItems.map((item) => (
@@ -1087,7 +1089,7 @@ export default function App() {
 
       <section className="tide-main">
         <header className="topline">
-          <div className="status-dot">{tr("LOCAL WATERS OPEN", "本地水域开放")}</div>
+          <div className="status-dot">{tr("SUNSET LAKE · LOCAL PLAY", "落日湖畔 · 本地游玩")}</div>
           <div className="topline-actions">
             <MusicToggle enabled={musicEnabled} language={language} onToggle={toggleMusic} />
             <div className="language-switch" aria-label={tr("Language", "语言")}>
@@ -1101,11 +1103,11 @@ export default function App() {
           <section className="content home-view">
             <div className="home-hero">
               <div className="hero-copy">
-                <p className="eyebrow">{tr("YOUR TIDE, YOUR PACE", "跟随自己的潮汐")}</p>
-                <h1>{tr("Settle in. Keep the line moving.", "坐稳，抛线，慢慢钓。")}</h1>
+                <p className="eyebrow">{tr("A LITTLE LAKE. A LITTLE ESCAPE.", "一片小湖，一段闲暇。")}</p>
+                <h1><span>Rise <em>&</em> Reel</span><small>{tr("THE LAKE IS CALLING", "湖畔时光")}</small></h1>
                 <p>{prefersTouchControls
-                  ? tr("One control. No clock. Follow the fish, feel the pull, and stay as long as you like.", "一个触控按钮，不限时间。跟住鱼的节奏，感受鱼线拉力，想钓多久就钓多久。")
-                  : tr("One key. No clock. Follow the fish, feel the pull, and stay as long as you like.", "一个按键，不限时间。跟住鱼的节奏，感受鱼线拉力，想钓多久就钓多久。")}</p>
+                  ? tr("Cast a line. Find your rhythm. Stay a little longer.", "抛下鱼线，跟着水波，慢慢钓。")
+                  : tr("Cast a line. Find your rhythm. Stay a little longer.", "抛下鱼线，跟着水波，慢慢钓。")}</p>
                 <div className="hero-note">
                   <span aria-hidden="true" />
                   <p>{tr("Four fish. Three ways to play. One quiet lake.", "四种鱼，三种玩法，同一片安静水域。")}</p>
@@ -1114,11 +1116,11 @@ export default function App() {
               <figure className="lake-window">
                 <img
                   src={lakeHero}
-                  width="1280"
-                  height="853"
+                  width="1536"
+                  height="1024"
                   alt={tr(
-                    "A pixel-art angler casts into a sunset lake above a lively underwater world.",
-                    "像素画中的钓手在落日湖畔抛线，水下鱼群游过。",
+                    "A golden sunset over a pixel-art lake, with a lantern on the wooden dock.",
+                    "金色夕阳映照像素湖面，木码头上亮着一盏提灯。",
                   )}
                 />
                 <span className="hero-waterline" aria-hidden="true" />
@@ -1135,10 +1137,10 @@ export default function App() {
                 aria-label={tr("Set up Solo Fishing", "设置单人钓鱼")}
                 onClick={() => setScreen("setup")}
               >
-                <span className="mode-diagram solo" aria-hidden="true"><i /><b /></span>
+                <span className="mode-diagram solo" aria-hidden="true"><TackleIcon kind="reel" /></span>
                 <small>{tr("SOLO WATER", "单人水域")}</small>
-                <strong>{tr("Hold the line yourself.", "自己掌住鱼线。")}</strong>
-                <p>{tr("One control moves the net. Follow every dart and dive.", "一个控制移动捕获网，跟住每一次冲刺与下潜。")}</p>
+                <strong>{tr("Solo fishing", "独自垂钓")}</strong>
+                <p>{tr("One key, your own quiet corner.", "一个按键，独享片刻宁静。")}</p>
                 <span className="mode-action">{tr("Set up Solo Fishing", "设置单人钓鱼")} →</span>
               </button>
               <button
@@ -1146,10 +1148,10 @@ export default function App() {
                 aria-label={tr("Play with 2–4 people", "2–4 人一起玩")}
                 onClick={() => setScreen("multiplayer-setup")}
               >
-                <span className="mode-diagram multiplayer" aria-hidden="true"><i /><i /><i /><i /></span>
+                <span className="mode-diagram multiplayer" aria-hidden="true"><TackleIcon kind="crew" /></span>
                 <small>{tr("SHARED DOCK", "共享码头")}</small>
-                <strong>{tr("Race on the same keyboard.", "在同一键盘上竞速。")}</strong>
-                <p>{tr("Two to four independent lines, one screen, no timer.", "二至四条独立鱼线，共享屏幕，不限时间。")}</p>
+                <strong>{tr("Friendly rivals", "湖畔同乐")}</strong>
+                <p>{tr("2–4 anglers. A little friendly competition.", "2–4 位钓友，比比谁的鱼篓满。")}</p>
                 <span className="mode-action">{tr("Play with 2–4 people", "2–4 人一起玩")} →</span>
               </button>
               <button
@@ -1157,10 +1159,10 @@ export default function App() {
                 aria-label={tr("Play 2D together", "双人 2D 协作")}
                 onClick={() => setScreen("cooperative-setup")}
               >
-                <span className="mode-diagram cooperative" aria-hidden="true"><i /><b /></span>
+                <span className="mode-diagram cooperative" aria-hidden="true"><TackleIcon kind="net" /></span>
                 <small>{tr("TWO-PERSON NET", "双人协作网")}</small>
-                <strong>{tr("Split the axes. Share the catch.", "分工控制双轴，共享捕获。")}</strong>
-                <p>{tr("One player steers across. The other controls depth.", "一人控制水平，一人控制深度。")}</p>
+                <strong>{tr("Better together", "默契搭档")}</strong>
+                <p>{tr("Two anglers, one net. Find your rhythm.", "两个人，一张网，一起找准节奏。")}</p>
                 <span className="mode-action">{tr("Play 2D together", "双人 2D 协作")} →</span>
               </button>
               <button
@@ -1168,10 +1170,10 @@ export default function App() {
                 aria-label={tr("View history", "查看历史")}
                 onClick={showHistory}
               >
-                <span className="mode-diagram history" aria-hidden="true"><i /><i /><i /></span>
+                <span className="mode-diagram history" aria-hidden="true"><TackleIcon kind="book" /></span>
                 <small>{tr("LOCAL LOGBOOK", "本地钓鱼日志")}</small>
-                <strong>{tr("Keep the sessions that matter.", "留下值得记住的会话。")}</strong>
-                <p>{tr("Personal bests and the latest 100 solo sessions stay here.", "个人最佳与最近 100 次单人会话保存在这里。")}</p>
+                <strong>{tr("Your logbook", "垂钓手记")}</strong>
+                <p>{tr("Good catches make good memories.", "把每次好收获，记在这里。")}</p>
                 <span className="mode-action">{tr("View history", "查看历史")} →</span>
               </button>
             </div>
@@ -1180,7 +1182,7 @@ export default function App() {
 
         {screen === "setup" && (
           <section className="content setup-view">
-            <div className="page-heading"><p className="eyebrow">{tr("SOLO SETUP", "单人设置")}</p><h1>{prefersTouchControls ? tr("Your reel control is ready.", "收线控制已准备好。") : tr("Choose your reel key.", "选择你的收线按键。")}</h1><p>{prefersTouchControls ? tr("Start fishing and hold the on-screen button to lift the catch zone.", "开始钓鱼后，按住屏幕按钮即可抬升捕获区。") : tr("This setting stays in your browser for the next session.", "此设置会保存在当前浏览器，供下次使用。")}</p></div>
+            <div className="page-heading"><p className="eyebrow">{tr("SOLO SETUP", "单人设置")}</p><h1>{prefersTouchControls ? tr("Your reel control is ready.", "收线控制已准备好。") : tr("Ready your tackle.", "准备好渔具。")}</h1><p>{prefersTouchControls ? tr("Start fishing and hold the on-screen button to lift the catch zone.", "开始钓鱼后，按住屏幕按钮即可抬升捕获区。") : tr("This setting stays in your browser for the next session.", "此设置会保存在当前浏览器，供下次使用。")}</p></div>
             <div className="setup-grid">
               {prefersTouchControls ? (
                 <div className="key-binding touch-ready">
@@ -1195,7 +1197,7 @@ export default function App() {
                   <small>{tr("Click to change", "点击更改")}</small>
                 </button>
               )}
-              <article className="how-card"><strong>{tr("How the line moves", "鱼线如何移动")}</strong><p>{prefersTouchControls ? tr("Hold the reel button to lift the catch zone. Release it and gravity pulls the zone down.", "按住收线按钮让捕获区上升；松开后，重力会让捕获区下落。") : tr("Hold your key to lift the catch zone. Release it and gravity pulls the zone down.", "按住按键让捕获区上升；松开后，重力会让捕获区下落。")}</p><span>{tr("A short preparation count appears before the water starts.", "水域开始前会显示短暂准备倒计时。")}</span></article>
+              <article className="how-card"><div className="control-demo" aria-hidden="true"><span className="demo-line"/><span className="demo-net"><TackleIcon kind="net" /></span><span className="demo-fish"><TackleIcon kind="fish" /></span></div><strong>{tr("A little fishing wisdom", "湖畔小窍门")}</strong><p>{prefersTouchControls ? tr("Hold the reel button to lift the catch zone. Release it and gravity pulls the zone down.", "按住收线按钮让捕获区上升；松开后，重力会让捕获区下落。") : tr("Hold your key to lift the catch zone. Release it and gravity pulls the zone down.", "按住按键让捕获区上升；松开后，重力会让捕获区下落。")}</p><span>{tr("A short preparation count appears before the water starts.", "水域开始前会显示短暂准备倒计时。")}</span></article>
             </div>
             <div className="action-row"><button className="primary-action" onClick={beginSession}>{tr("Start fishing", "开始钓鱼")} <span>→</span></button><button className="secondary-action" onClick={() => setScreen("home")}>{tr("Back home", "返回首页")}</button></div>
           </section>
@@ -1390,13 +1392,14 @@ export default function App() {
             </div>
             <div className="solo-board">
               <aside className="session-stats">
-                <div><span>{tr("Session score", "会话得分")}</span><strong>{lane.score}</strong></div>
+                <div><span>{tr("Session score", "本次收获")}</span><strong>{lane.score}</strong></div>
                 <div><span>{tr("Caught", "捕获")}</span><strong>{lane.catches}</strong></div>
                 <div><span>{tr("Escaped", "逃脱")}</span><strong>{lane.escapes}</strong></div>
                 <div><span>{tr("Best streak", "最佳连击")}</span><strong>{lane.maxStreak}</strong></div>
-                <div className="fish-now"><span>{tr("In the water", "当前鱼种")}</span><strong>{fishNames[lane.fish.id][language]}</strong><i style={{ background: lane.fish.color }} /></div>
+                <div className="fish-now"><img src={FISH_ART[lane.fish.id].src} alt="" aria-hidden="true" /><span>{tr("In the water", "当前鱼种")}</span><strong>{fishNames[lane.fish.id][language]}</strong><i style={{ background: lane.fish.color }} /></div>
               </aside>
               <div className="water-wrap">
+                <WaterHeading title={tr("SUNSET LAKE", "落日湖畔")} subtitle={tr("FIND YOUR RHYTHM", "跟住鱼的节奏")} />
                 <LaneWater
                   lane={lane}
                   variant="solo"
@@ -1404,7 +1407,7 @@ export default function App() {
                   caughtMessage={tr(`Caught! +${lane.lastReward}`, `捕获！+${lane.lastReward}`)}
                   escapedMessage={tr("Escaped", "逃脱")}
                 />
-                <div className="catch-meter"><div><span>{tr("Catch meter", "捕获进度")}</span><strong>{catchPercent}%</strong></div><div className="meter-track" role="progressbar" aria-label={tr("Catch meter", "捕获进度")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={catchPercent}><span style={{ width: `${catchPercent}%` }} /></div><small><kbd>{formatKeyCode(keyCode)}</kbd> {tr("hold to rise · release to fall", "按住上升 · 松开下落")}</small></div>
+                <div className="catch-meter" data-pressure={catchPercent >= 76 ? "high" : catchPercent < 25 ? "low" : "steady"}><TackleIcon kind="reel" /><p className="meter-caption">{catchPercent >= 76 ? tr("ALMOST THERE!", "就快收网了！") : catchPercent < 25 ? tr("FOLLOW THE FISH", "快跟上它！") : tr("STEADY DOES IT", "稳住，跟着它") }</p><div><span>{tr("Catch meter", "捕获进度")}</span><strong>{catchPercent}<em>%</em></strong></div><div className="meter-track" role="progressbar" aria-label={tr("Catch meter", "捕获进度")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={catchPercent}><span style={{ width: `${catchPercent}%` }} /></div><small><kbd>{formatKeyCode(keyCode)}</kbd> {tr("hold ↑ · release ↓", "按住 ↑ · 松开 ↓")}</small></div>
               </div>
             </div>
             {prefersTouchControls && (
@@ -1426,7 +1429,7 @@ export default function App() {
             <div className="page-heading"><p className="eyebrow">{tr("SESSION SUMMARY", "会话总结")}</p><h1>{isBest ? tr("A new personal best.", "新的个人最佳。") : tr("The tide settles.", "潮水渐平。")}</h1><p>{tr("Your completed Solo Fishing session is ready.", "你的单人钓鱼会话已经完成。")}</p></div>
             <div className="summary-grid">
               <article><span>{tr("Active time", "有效时长")}</span><strong>{formatDuration(summary.activeDurationMs)}</strong></article>
-              <article><span>{tr("Session score", "会话得分")}</span><strong>{summary.score}</strong></article>
+              <article><span>{tr("Session score", "本次收获")}</span><strong>{summary.score}</strong></article>
               <article><span>{tr("Caught", "捕获")}</span><strong>{summary.catches}</strong></article>
               <article><span>{tr("Escaped", "逃脱")}</span><strong>{summary.escapes}</strong></article>
               <article><span>{tr("Best streak", "最佳连击")}</span><strong>{summary.maxStreak}</strong></article>
@@ -1438,7 +1441,7 @@ export default function App() {
 
         {screen === "history" && (
           <section className="content history-view">
-            <div className="page-heading"><p className="eyebrow">{tr("SOLO HISTORY", "单人历史")}</p><h1>{tr("Your local waters.", "你的本地水域。")}</h1><p>{tr("Completed sessions saved in this browser. Latest 100 shown.", "当前浏览器保存的已完成会话，显示最近 100 条。")}</p></div>
+            <div className="page-heading"><p className="eyebrow">{tr("SOLO HISTORY", "单人历史")}</p><h1>{tr("The fishing journal.", "翻开垂钓手记。")}</h1><p>{tr("Completed sessions saved in this browser. Latest 100 shown.", "当前浏览器保存的已完成会话，显示最近 100 条。")}</p></div>
             <div className="history-totals"><article><span>{tr("Personal best", "个人最佳")}</span><strong>{history.bestScore}</strong></article><article><span>{tr("Lifetime score", "累计得分")}</span><strong>{history.lifetimeScore}</strong></article><article><span>{tr("Sessions kept", "保留会话")}</span><strong>{history.sessions.length}</strong></article></div>
             {history.sessions.length === 0 ? <div className="empty-state"><strong>{tr("No completed sessions yet.", "还没有已完成会话。")}</strong><p>{tr("Finish a Solo Fishing session and it will appear here.", "完成一次单人钓鱼后，它会出现在这里。")}</p><button className="primary-action" onClick={() => setScreen("setup")}>{tr("Set up Solo Fishing", "设置单人钓鱼")}</button></div> : <div className="history-list">{history.sessions.map((item) => <article key={item.id}><time>{new Intl.DateTimeFormat(language === "en" ? "en" : "zh-CN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.endedAt))}</time><strong>{item.score}</strong><span>{formatDuration(item.activeDurationMs)}</span><span>{tr(`${item.catches} caught`, `捕获 ${item.catches}`)}</span><span>{tr(`Streak ${item.maxStreak}`, `连击 ${item.maxStreak}`)}</span></article>)}</div>}
           </section>
