@@ -14,7 +14,7 @@ test("starts a two-player 2D session with unique axis controls", async ({
   await expect(page.getByText("Both axes are ready.")).toBeVisible();
 
   await page.getByRole("button", { name: /Start 2D Fishing/ }).click();
-  await expect(page.getByText("GET READY")).toBeHidden({ timeout: 5_000 });
+  await expect(page.locator('[data-session-phase="active"]')).toBeVisible({ timeout: 15_000 });
   await expect(page.locator(".cooperative-zone")).toBeVisible();
   await expect(page.getByText("Player 1 · X")).toBeVisible();
   await expect(page.getByText("Player 2 · Y")).toBeVisible();

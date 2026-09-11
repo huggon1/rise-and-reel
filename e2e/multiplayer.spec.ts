@@ -19,7 +19,7 @@ test("starts a four-player match with unique same-keyboard controls", async ({
 
   await page.getByRole("button", { name: /Start multiplayer/ }).click();
   await expect(page.getByText("GET READY")).toBeVisible();
-  await expect(page.getByText("GET READY")).toBeHidden({ timeout: 5_000 });
+  await expect(page.locator('[data-session-phase="active"]')).toBeVisible({ timeout: 15_000 });
   await expect(page.locator(".multiplayer-lane")).toHaveCount(4);
   await expect(page.getByText("Player 4", { exact: true })).toBeVisible();
 

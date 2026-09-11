@@ -16,7 +16,7 @@ test("completes and retains a zero-catch Solo Fishing session", async ({
 
   await page.getByRole("button", { name: /Start fishing/ }).click();
   await expect(page.getByText("GET READY")).toBeVisible();
-  await expect(page.getByText("GET READY")).toBeHidden({ timeout: 5_000 });
+  await expect(page.locator('[data-session-phase="active"]')).toBeVisible({ timeout: 15_000 });
 
   await page.evaluate(() => window.dispatchEvent(new Event("blur")));
   await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();

@@ -3020,3 +3020,9 @@ kbd {
     height: 40px;
   }
 }
+@media (pointer: coarse) and (max-width: 680px),
+  (pointer: coarse) and (orientation: landscape) and (max-height: 500px) {
+  .game-view.touch-enabled .multiplayer-lane {
+    grid-template-rows: 25px 32px minmax(0, 1fr) 32px;
+  }
+}
