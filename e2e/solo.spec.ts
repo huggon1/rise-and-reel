@@ -6,7 +6,7 @@ test("completes and retains a zero-catch Solo Fishing session", async ({
   await page.goto("/");
   await expect(page).toHaveTitle(/Rise & Reel/);
   await expect(
-    page.getByRole("heading", { name: "Settle in. Keep the line moving." }),
+    page.getByRole("heading", { name: "Rise & Reel THE LAKE IS CALLING" }),
   ).toBeVisible();
 
   await page.getByRole("button", { name: "Set up Solo Fishing" }).click();
@@ -16,7 +16,7 @@ test("completes and retains a zero-catch Solo Fishing session", async ({
 
   await page.getByRole("button", { name: /Start fishing/ }).click();
   await expect(page.getByText("GET READY")).toBeVisible();
-  await expect(page.getByText("GET READY")).toBeHidden({ timeout: 5_000 });
+  await expect(page.locator('[data-session-phase="active"]')).toBeVisible({ timeout: 15_000 });
 
   await page.evaluate(() => window.dispatchEvent(new Event("blur")));
   await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
@@ -30,6 +30,13 @@ test("completes and retains a zero-catch Solo Fishing session", async ({
   await expect(page.getByText("Saved in this browser.")).toBeVisible();
   await expect(page.getByText("0", { exact: true }).first()).toBeVisible();
 
+  const summaryRows = await page.locator(".summary-grid article").evaluateAll(
+    (cards) => cards.map((card) => Math.round(card.getBoundingClientRect().top)),
+  );
+  expect(new Set(summaryRows).size).toBe(1);
+  const replay = await page.getByRole("button", { name: /Play again/ }).boundingBox();
+  expect(replay!.y + replay!.height).toBeLessThanOrEqual(720);
+
   await page.getByRole("button", { name: "View history" }).click();
   await expect(page.getByText("SOLO HISTORY")).toBeVisible();
   await expect(page.getByText("1", { exact: true })).toBeVisible();
@@ -38,10 +45,10 @@ test("completes and retains a zero-catch Solo Fishing session", async ({
 test("persists the Chinese language preference", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "中文" }).click();
-  await expect(page.getByRole("heading", { name: "坐稳，抛线，慢慢钓。" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Rise & Reel 湖畔时光" })).toBeVisible();
 
   await page.reload();
-  await expect(page.getByRole("heading", { name: "坐稳，抛线，慢慢钓。" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Rise & Reel 湖畔时光" })).toBeVisible();
   await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
 });
 

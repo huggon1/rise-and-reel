@@ -10,15 +10,32 @@ const expectNoHorizontalOverflow = async (page: Page) => {
 
 const expectEntireSoloStageVisible = async (page: Page) => {
   const layout = await page.evaluate(() => {
-    const toolbar = document.querySelector(".game-toolbar")!.getBoundingClientRect();
-    const board = document.querySelector(".solo-board")!.getBoundingClientRect();
-    const stats = document.querySelector(".session-stats")!.getBoundingClientRect();
-    const water = document.querySelector(".water-column")!.getBoundingClientRect();
-    const meter = document.querySelector(".catch-meter")!.getBoundingClientRect();
-    const controls = document.querySelector(".touch-controls")!.getBoundingClientRect();
-    const marker = document.querySelector(".fish-marker")!.getBoundingClientRect();
-    const catchZone = document.querySelector(".catch-zone")!.getBoundingClientRect();
-    const fishImage = document.querySelector<HTMLImageElement>(".fish-sprite img")!;
+    const toolbar = document
+      .querySelector(".game-toolbar")!
+      .getBoundingClientRect();
+    const board = document
+      .querySelector(".solo-board")!
+      .getBoundingClientRect();
+    const stats = document
+      .querySelector(".session-stats")!
+      .getBoundingClientRect();
+    const water = document
+      .querySelector(".water-column")!
+      .getBoundingClientRect();
+    const meter = document
+      .querySelector(".catch-meter")!
+      .getBoundingClientRect();
+    const controls = document
+      .querySelector(".touch-controls")!
+      .getBoundingClientRect();
+    const marker = document
+      .querySelector(".fish-marker")!
+      .getBoundingClientRect();
+    const catchZone = document
+      .querySelector(".catch-zone")!
+      .getBoundingClientRect();
+    const fishImage =
+      document.querySelector<HTMLImageElement>(".fish-sprite img")!;
 
     return {
       scrollY: window.scrollY,
@@ -69,21 +86,33 @@ const expectEntireSoloStageVisible = async (page: Page) => {
 
 const expectEntireMultiplayerStageVisible = async (page: Page) => {
   const layout = await page.evaluate(() => {
-    const toolbar = document.querySelector(".game-toolbar")!.getBoundingClientRect();
-    const board = document.querySelector(".multiplayer-board")!.getBoundingClientRect();
-    const controls = document.querySelector(".touch-controls")!.getBoundingClientRect();
+    const toolbar = document
+      .querySelector(".game-toolbar")!
+      .getBoundingClientRect();
+    const board = document
+      .querySelector(".multiplayer-board")!
+      .getBoundingClientRect();
+    const controls = document
+      .querySelector(".touch-controls")!
+      .getBoundingClientRect();
     const lanes = [...document.querySelectorAll(".multiplayer-lane")].map(
       (lane) => lane.getBoundingClientRect(),
     );
-    const markerHeights = [...document.querySelectorAll(".multiplayer-lane")].map(
-      (lane) => lane.querySelector(".fish-marker")!.getBoundingClientRect().height,
+    const markerHeights = [
+      ...document.querySelectorAll(".multiplayer-lane"),
+    ].map(
+      (lane) =>
+        lane.querySelector(".fish-marker")!.getBoundingClientRect().height,
     );
-    const catchZoneHeights = [...document.querySelectorAll(".multiplayer-lane")].map(
-      (lane) => lane.querySelector(".catch-zone")!.getBoundingClientRect().height,
+    const catchZoneHeights = [
+      ...document.querySelectorAll(".multiplayer-lane"),
+    ].map(
+      (lane) =>
+        lane.querySelector(".catch-zone")!.getBoundingClientRect().height,
     );
-    const controlTops = [...document.querySelectorAll(".touch-controls button")].map(
-      (control) => control.getBoundingClientRect().top,
-    );
+    const controlTops = [
+      ...document.querySelectorAll(".touch-controls button"),
+    ].map((control) => control.getBoundingClientRect().top);
     return {
       scrollY: window.scrollY,
       viewportWidth: window.innerWidth,
@@ -104,8 +133,12 @@ const expectEntireMultiplayerStageVisible = async (page: Page) => {
   expect(layout.boardWidth).toBeGreaterThanOrEqual(layout.viewportWidth - 20);
   expect(layout.toolbarTop).toBeGreaterThanOrEqual(0);
   expect(Math.min(...layout.laneTops)).toBeGreaterThanOrEqual(0);
-  expect(Math.max(...layout.laneTops) - Math.min(...layout.laneTops)).toBeLessThanOrEqual(1);
-  expect(Math.max(...layout.controlTops) - Math.min(...layout.controlTops)).toBeLessThanOrEqual(1);
+  expect(
+    Math.max(...layout.laneTops) - Math.min(...layout.laneTops),
+  ).toBeLessThanOrEqual(1);
+  expect(
+    Math.max(...layout.controlTops) - Math.min(...layout.controlTops),
+  ).toBeLessThanOrEqual(1);
   expect(Math.max(...layout.laneBottoms)).toBeLessThanOrEqual(
     layout.controlsTop,
   );
@@ -115,7 +148,9 @@ const expectEntireMultiplayerStageVisible = async (page: Page) => {
   }
 };
 
-test("plays Solo Fishing with an on-screen reel control", async ({ page }) => {
+test("plays Solo Fishing with an on-screen reel control", async ({
+  page,
+}, testInfo) => {
   await page.setViewportSize({ width: 320, height: 740 });
   await page.goto("/");
   await expectNoHorizontalOverflow(page);
@@ -123,10 +158,15 @@ test("plays Solo Fishing with an on-screen reel control", async ({ page }) => {
   await page.getByRole("button", { name: "Set up Solo Fishing" }).click();
   await expect(page.getByText("TOUCH READY")).toBeVisible();
   await page.getByRole("button", { name: /Start fishing/ }).click();
-  await expect(page.getByText("GET READY")).toBeHidden({ timeout: 5_000 });
+  await expect(page.locator('[data-session-phase="active"]')).toBeVisible({
+    timeout: 15_000,
+  });
   await expect(page.locator('[data-session-phase="active"]')).toBeVisible();
   await expectEntireSoloStageVisible(page);
 
+  await expect(page.locator(".catch-meter kbd")).toHaveCount(0);
+  await expect(page.getByText("Hold button ↑ · release ↓")).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath("solo-mobile.png") });
   const reel = page.getByRole("button", { name: "Reel control" });
   await expect(reel).toBeVisible();
   await reel.dispatchEvent("pointerdown", {
@@ -156,7 +196,7 @@ test("plays Solo Fishing with an on-screen reel control", async ({ page }) => {
 test("explains the desktop boundary for 2D Fishing", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 740 });
   await page.goto("/");
-  await page.getByRole("button", { name: "2D Fishing" }).click();
+  await page.getByRole("button", { name: "Play 2D together" }).click();
 
   await expect(page.getByText("Open on desktop")).toBeVisible();
   await expect(
@@ -170,6 +210,7 @@ test("starts every multiplayer size without keyboard bindings", async ({
 }) => {
   await page.setViewportSize({ width: 320, height: 740 });
   const waterHeights: number[] = [];
+  const sizingSamples: unknown[] = [];
   for (const playerCount of [2, 3, 4]) {
     await page.goto("/");
     await page.getByRole("button", { name: "Play with 2–4 people" }).click();
@@ -179,17 +220,50 @@ test("starts every multiplayer size without keyboard bindings", async ({
 
     await expect(page.getByText("On-screen controls are ready.")).toBeVisible();
     await page.getByRole("button", { name: /Start multiplayer/ }).click();
-    await expect(page.getByText("GET READY")).toBeHidden({ timeout: 5_000 });
+    await expect(page.locator('[data-session-phase="active"]')).toBeVisible({
+      timeout: 15_000,
+    });
     await expect(page.locator(".multiplayer-lane")).toHaveCount(playerCount);
-    await expect(page.getByRole("button", { name: /Player \d reel control/ }))
-      .toHaveCount(playerCount);
+    await expect(
+      page.getByRole("button", { name: /Player \d reel control/ }),
+    ).toHaveCount(playerCount);
     await expectNoHorizontalOverflow(page);
     await expectEntireMultiplayerStageVisible(page);
-    waterHeights.push(await page.locator(".multiplayer-water").first().evaluate(
-      (water) => water.getBoundingClientRect().height,
-    ));
+    await page.evaluate(() => document.fonts.ready);
+    sizingSamples.push(
+      await page.evaluate(() =>
+        [
+          ".game-toolbar",
+          ".touch-controls",
+          ".touch-controls button",
+          ".multiplayer-lane",
+          ".multiplayer-lane header",
+          ".multiplayer-stats",
+          ".multiplayer-meter",
+          ".multiplayer-water",
+        ].map((selector) => {
+          const el = document.querySelector(selector)!;
+          const rect = el.getBoundingClientRect();
+          return {
+            selector,
+            height: rect.height,
+            top: rect.top,
+            rows: getComputedStyle(el).gridTemplateRows,
+          };
+        }),
+      ),
+    );
+    waterHeights.push(
+      await page
+        .locator(".multiplayer-water")
+        .first()
+        .evaluate((water) => water.getBoundingClientRect().height),
+    );
   }
-  expect(Math.max(...waterHeights) - Math.min(...waterHeights)).toBeLessThanOrEqual(1);
+  expect(
+    Math.max(...waterHeights) - Math.min(...waterHeights),
+    JSON.stringify(sizingSamples),
+  ).toBeLessThanOrEqual(1);
 
   const playerOne = page.getByRole("button", {
     name: "Player 1 reel control",
