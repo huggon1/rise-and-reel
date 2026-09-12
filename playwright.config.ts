@@ -5,10 +5,12 @@ export default defineConfig({
   fullyParallel: true,
   // Keep Linux software-rendered WebKit sessions from competing on CI runners.
   workers: process.env.CI ? 1 : undefined,
+  // Retry once in a fresh worker when a CI browser process exits unexpectedly.
+  retries: process.env.CI ? 1 : 0,
   reporter: "line",
   use: {
     baseURL: "http://127.0.0.1:4173",
-    trace: "retain-on-failure",
+    trace: process.env.CI ? "on-first-retry" : "retain-on-failure",
   },
   projects: [
     {
